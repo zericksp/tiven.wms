@@ -1,0 +1,97 @@
+name: tiven
+description: "A new Flutter project."
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+version: 1.0.0+1
+environment:
+  sdk: ^3.6.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  animated_background: ^2.0.0
+  auto_size_text: ^3.0.0
+  cached_network_image: ^3.4.1
+  connectivity_plus: ^6.1.3
+  convert: ^3.1.2
+  crypto: ^3.0.6
+  cupertino_icons: ^1.0.8
+  custom_check_box: ^0.0.4
+  device_info_plus: ^11.3.0
+  dio: ^5.8.0+1
+  flutter_barcode_scanner_plus: ^3.0.8
+  flutter_beep_plus: ^0.0.3
+  flutter_spinbox: ^0.13.1
+  http: ^1.3.0
+  image_picker: ^1.1.2
+  intl: ^0.20.2
+  msh_checkbox: ^2.0.1
+  mysql1: ^0.20.0
+  native_barcode_scanner: ^1.0.11
+  pdf: ^3.11.3
+  provider: ^6.1.2
+  roundcheckbox: ^2.0.5
+  shared_preferences: ^2.5.2
+  simple_tags: ^0.0.6
+  string_capitalize: ^0.0.10
+  strings: ^3.2.0
+  url_launcher: ^6.3.1
+  volume_controller: ^3.3.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/aud/beep1.wav
+    - assets/aud/beep2.wav
+    - assets/aud/beep3.wav
+    - assets/aud/beep4.wav
+    - assets/docs/colectors.json
+    - assets/images/NFe.png
+    - assets/images/add_photo.png
+    - assets/images/address.png
+    - assets/images/balance.png
+    - assets/images/bckgrnd.jpg
+    - assets/images/bkgrnd.jpg
+    - assets/images/cover.jpg
+    - assets/images/cover.png
+    - assets/images/load.gif
+    - assets/images/log.gif
+    - assets/images/logo.png
+    - assets/images/logo1.png
+    - assets/images/logo2.png
+    - assets/images/logo3.png
+    - assets/images/logo4.png
+    - assets/images/logo5.png
+    - assets/images/logot.png
+    - assets/images/logoVt.png
+    - assets/images/logo50p.png
+    - assets/images/logotiven.png
+    - assets/images/logovip.png
+    - assets/images/logosys.png
+    - assets/images/nopic.png
+    - assets/images/picking.png
+    - assets/images/postit.png
+    - assets/images/products.png
+    - assets/images/profile.png
+    - assets/images/repos.png
+    - assets/images/scan.png
+    - assets/images/scanme.png
+    - assets/images/scanorder.png
+    - assets/images/stock.png
+    - assets/images/wallpaper.jpg
+    - assets/images/wms.jpg
+    - assets/videos/heart.riv
+    - assets/videos/juice.riv
+    - assets/videos/liquid_download.riv
+    - assets/videos/little_machine.riv
+    - assets/videos/marty.riv
+    - assets/videos/off_road_car.riv
+    - assets/videos/red.riv
+    - assets/videos/rocket.riv
+    - assets/videos/skills.riv
+    - assets/videos/teeny_tiny.riv
+    - assets/videos/truck.riv

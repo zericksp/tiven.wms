@@ -1,0 +1,37 @@
+[
+    {
+        "modelo": "Zebra TC15",
+        "barcode": true,
+        "qrcode": true
+    },
+    {
+        "modelo": "Zebra TC21",
+        "barcode": true,
+        "qrcode": true
+    },
+    {
+        "modelo": "Zebra TC22",
+        "barcode": true,
+        "qrcode": true
+    },
+    {
+        "modelo": "Zebra TC52",
+        "barcode": true,
+        "qrcode": true
+    },
+    {
+        "modelo": "Honeywell EDA51",
+        "barcode": true,
+        "qrcode": true
+    },
+    {
+        "modelo": "Datalogic Memor 10",
+        "barcode": true,
+        "qrcode": false
+    },
+    {
+        "modelo": "Bluebird EF500",
+        "barcode": true,
+        "qrcode": true
+    }
+]
