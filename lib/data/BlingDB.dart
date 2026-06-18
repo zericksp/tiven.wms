@@ -1,8 +1,7 @@
-// BlingDB.dart
 import 'dart:async';
-import 'dart:convert';
-import 'package:dio/dio.dart'; 
+import 'package:dio/dio.dart';
 import 'package:tiven/pages/items.dart';
+import 'package:tiven/utils/logger.dart' as log;
 
 // ig.:page=1;limit=100&filters=dataEmissao[2024-02-13T12:49:20.000Z TO 2024-02-14T23:59:00.000Z]; idSituacao[68912, 15,6,9]
 final String url = 'https://www.bling.com.br/Api/v3/';
@@ -24,10 +23,9 @@ var response = await dio.request(
 );
 
 if (response.statusCode == 200) {
-  print(json.encode(response.data));
+  log.logger.i('Bling orders fetched successfully');
+} else {
+  log.logger.e('Error fetching orders: ${response.statusMessage}');
 }
-else {
-  print(response.statusMessage);
-}
-  return response.data;  
+return response.data;  
  }

@@ -1,7 +1,6 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'package:auto_size_text/auto_size_text.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 // import 'package:flutter_barcode_scanner/flutter_barcode_scanner.dart';
@@ -181,7 +180,7 @@ class _InventoryPageState extends State<InventoryPage> {
                   textAlign: TextAlign.center,
                 ),
                 Text(
-                  "Balanço",
+                  "BalanÃ§o",
                   style: TextStyle(
                       color: Colors.white,
                       fontSize: 15,
@@ -233,7 +232,7 @@ class _InventoryPageState extends State<InventoryPage> {
                   'assets/images/nopic.png',
                   height: 80,
                   width: 80,
-                ); // Text('😢');
+                ); // Text('ðŸ˜¢');
               },
               fit: BoxFit.scaleDown,
               loadingBuilder: (BuildContext context, Widget child,
@@ -287,7 +286,7 @@ class _InventoryPageState extends State<InventoryPage> {
         _barcode = int.parse(barcodeScanRes);
       }
     } catch (e) {
-      barcodeScanRes = 'Falha ao verificar versão da plataforma.';
+      barcodeScanRes = 'Falha ao verificar versÃ£o da plataforma.';
     }
   }
 
@@ -300,7 +299,7 @@ class _InventoryPageState extends State<InventoryPage> {
     int digit = 0;
 
     for (int x = 0; x <= $length; x++) {
-      print(x);
+
       if (x == $length) {
         intval2 += int.parse(barcode.toString().substring(x, x + 1));
       } else if ((x % 2) == 0) {
@@ -354,7 +353,7 @@ class _InventoryPageState extends State<InventoryPage> {
         headers: {"Accept": "application/json"});
 
     if (response.contentLength! >= 100) {
-      print(response.body);
+
     }
   }
 
@@ -367,7 +366,7 @@ class _InventoryPageState extends State<InventoryPage> {
 
     setState(() {
       if (response.contentLength! >= 100) {
-        print(response.body);
+
       }
     });
   }
@@ -402,7 +401,7 @@ class _InventoryPageState extends State<InventoryPage> {
                           'assets/images/nopic.png',
                           height: 80,
                           width: 80,
-                        ); // Text('😢');
+                        ); // Text('ðŸ˜¢');
                       },
                       fit: BoxFit.scaleDown,
                       loadingBuilder: (BuildContext context, Widget child,
@@ -571,7 +570,7 @@ class _InventoryPageState extends State<InventoryPage> {
         Uri.parse(
             "http://www.tiven.com.br/crud/getProductByCode.php?CODE=$_barcode"),
         headers: {"Accept": "application/json"});
-    print(_barcode);
+
     if (response.contentLength! >= 100) {
       var convertDataToJson = json.decode(response.body);
       //myController.text = '';
@@ -607,7 +606,7 @@ class _InventoryPageState extends State<InventoryPage> {
         _location = "";
         _quant = 0;
         _imagePath = 'http://www.tiven.com.br/crud/images/notregistered.png';
-        print(_barcode);
+
       });
     }
   }
@@ -620,10 +619,10 @@ class _InventoryPageState extends State<InventoryPage> {
           primaryColor: Colors.white,
           primaryColorDark: Colors.red,
         ),
-        child: RawKeyboardListener(
+        child: KeyboardListener(
           focusNode: focusNode,
-          onKey: (event) async {
-            if (event.isKeyPressed(LogicalKeyboardKey.enter)) {
+          onKeyEvent: (event) async {
+            if (HardwareKeyboard.instance.isLogicalKeyPressed(LogicalKeyboardKey.enter)) {
               _barcode = int.parse(myController.text);
               //await scanBarcodeNormal();
               while (_barcode.toString().length <= 12) {
@@ -668,7 +667,7 @@ class _InventoryPageState extends State<InventoryPage> {
               focusedBorder: OutlineInputBorder(
                 borderSide: BorderSide(color: Colors.white),
               ),
-              hintText: 'Código do Produto',
+              hintText: 'CÃ³digo do Produto',
               hintStyle: TextStyle(color: Colors.grey, fontSize: 16),
               //helperText: myController.text.length.toString() + '/14',
               //helperStyle: TextStyle(color: Colors.grey),
@@ -735,7 +734,7 @@ class _InventoryPageState extends State<InventoryPage> {
               height: 20,
               color: Colors.black,
               child: Text(
-                "Aguardando conexão...",
+                "Aguardando conexÃ£o...",
                 style: TextStyle(color: Colors.white),
               ),
             );
@@ -751,43 +750,12 @@ class _InventoryPageState extends State<InventoryPage> {
           } else if (snapshot.connectionState == ConnectionState.done) {}
           _onRefresh();
           Future.delayed(Duration(seconds: 1));
-          return ItemsList(Items: snapshot.data!, usr: usr);
+          return ItemsList(items: snapshot.data!, usr: usr);
         },
       ),
     );
   }
 
-  Future<Widget> _ListItems_() async {
-    return Container(
-      height: 500,
-      color: Colors.black,
-      child: blFetch == true
-          ? Container()
-          : RefreshIndicator(
-              onRefresh: _onRefresh,
-              child: FutureBuilder<List<InvItems>>(
-                future: fetchInvItems(usr, true, _value.toString()),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.done) {
-                    // this._qty = snapshot.data.length;
-                    _onRefresh();
-                    return ItemsList(Items: snapshot.data!, usr: usr);
-                  } else if (snapshot.hasError == true) {
-                    if (kDebugMode) {
-                      print(snapshot.error);
-                    }
-                    return Center(
-                        child: CircularProgressIndicator(color: Colors.grey));
-                  } else {
-                    _qty = 0;
-                    return Center(
-                        child: CircularProgressIndicator(color: Colors.grey));
-                  }
-                },
-              ),
-            ),
-    );
-  }
 
   Future<void> _onRefresh() {
     var completer = Completer<Null>();
@@ -800,42 +768,23 @@ class _InventoryPageState extends State<InventoryPage> {
 }
 
 class ItemsList extends StatefulWidget {
-  final List<InvItems> Items;
-  late String usr;
+  final List<InvItems> items;
+  final String usr;
 
-  ItemsList({Key? key, required this.Items, required this.usr})
-      : super(key: key);
+  const ItemsList({super.key, required this.items, required this.usr});
 
   @override
-  _ItemsListState createState() => _ItemsListState(usr: usr);
+  State<ItemsList> createState() => _ItemsListState(usr: usr);
 }
 
 class _ItemsListState extends State<ItemsList> {
   _ItemsListState({required this.usr});
-  late String _scanLocation;
-  late String _location;
   late String usr;
   late bool saved;
   final myController = TextEditingController();
 
-  Null get child => null;
-  final String _url = "https://www.tiven.com.br/crud/images/";
-  final String _scanBarcode = 'Desconhecido';
-  final String _title = "";
-  final int _barcode = 0;
-  final String _sku = "";
-  final int _location2 = 0;
-  final int _location3 = 0;
-  final int _quant = 0;
-  final int _quant2 = 0;
-  final int _quant3 = 0;
-  final int _quantot = 0;
-  final String _imagePath = 'https://www.tiven.com.br/crud/images/nopic.jpg';
-  late bool _notFound, _badLabel, _urgRepo, _obs = false;
-  var data;
   var focusNode = FocusNode();
   var myfocusNode = FocusNode();
-  final int _newquant = 0;
 
   @override
   void dispose() {
@@ -848,9 +797,6 @@ class _ItemsListState extends State<ItemsList> {
     super.dispose();
   }
 
-  void _printLatestValue() {
-    print("Second text f");
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -866,7 +812,7 @@ class _ItemsListState extends State<ItemsList> {
         headers: {"Accept": "application/json"});
 
     if (response.contentLength! >= 1) {
-      print("");
+
     }
   }
 
@@ -888,7 +834,7 @@ class _ItemsListState extends State<ItemsList> {
     // fetchInvItems(this.usr, true, "1");
     // ItemsList();
     return ListView.builder(
-      itemCount: widget.Items.length <= 0 ? 0 : widget.Items.length,
+      itemCount: widget.items.isEmpty ? 0 : widget.items.length,
       itemBuilder: (context, index) {
         return Column(
           children: <Widget>[
@@ -916,15 +862,15 @@ class _ItemsListState extends State<ItemsList> {
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(8.0),
                           child: Image.network(
-                            widget.Items[index].thumbnailUrl,
+                            widget.items[index].thumbnailUrl,
                             height: 60,
                             width: 60,
                             errorBuilder: (BuildContext context,
                                 Object? exception, StackTrace? stackTrace) {
-                              sendMessage(widget.Items[index].sku,
+                              sendMessage(widget.items[index].sku,
                                   'Foto nao localizada no repositorio');
                               return Image.asset(
-                                  'assets/images/nopic.png'); // Text('😢');
+                                  'assets/images/nopic.png'); // Text('ðŸ˜¢');
                             },
                             fit: BoxFit.scaleDown,
                             loadingBuilder: (BuildContext context, Widget child,
@@ -959,7 +905,7 @@ class _ItemsListState extends State<ItemsList> {
                             Expanded(
                               flex: 4,
                               child: AutoSizeText(
-                                widget.Items[index].sku,
+                                widget.items[index].sku,
                                 style: TextStyle(
                                   fontWeight: FontWeight.w400,
                                   color: Colors.orange,
@@ -971,7 +917,7 @@ class _ItemsListState extends State<ItemsList> {
                             Expanded(
                               flex: 4,
                               child: AutoSizeText(
-                                widget.Items[index].gtin,
+                                widget.items[index].gtin,
                                 style: TextStyle(
                                   color: Colors.orange,
                                   fontWeight: FontWeight.w400,
@@ -987,7 +933,7 @@ class _ItemsListState extends State<ItemsList> {
                                 child: Container(
                                   color: Colors.yellow,
                                   child: AutoSizeText(
-                                    widget.Items[index].address,
+                                    widget.items[index].address,
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontSize: 3,
@@ -1008,7 +954,7 @@ class _ItemsListState extends State<ItemsList> {
                         child: Padding(
                           padding: const EdgeInsets.all(0.0),
                           child: AutoSizeText(
-                            '${widget.Items[index].qty} * ${widget.Items[index].title.toLowerCase()}',
+                            '${widget.items[index].qty} * ${widget.items[index].title.toLowerCase()}',
                             textAlign: TextAlign.left,
                             style: TextStyle(
                                 fontSize: 14,
