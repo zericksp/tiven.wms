@@ -318,7 +318,7 @@ class _PhotosListState extends State<PhotosList> {
   String usr;
   late bool saved;
 
-  get child => null;
+  Null get child => null;
   final String _url = "https://www.tiven.com.br/crud/images/";
   final String _sku = "";
   int captured = 0;
@@ -748,7 +748,7 @@ class _PhotosListState extends State<PhotosList> {
     );
   }
 
-  snacksaved() {
+  void snacksaved() {
     SnackBar(
       backgroundColor: saved
           ? Colors.blueAccent[300]

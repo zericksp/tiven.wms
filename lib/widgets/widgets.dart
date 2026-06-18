@@ -34,15 +34,7 @@ class HeaderRows extends StatelessWidget {
           child: Row(
             children: <Widget>[
               AutoSizeText(
-                (title +
-                    ' : ' +
-                    text
-                        // .toString()
-                        // .substring(
-                        //   0,
-                        //   text.length > 34 ? 34 : text.length,
-                        // )
-                        .toString()),
+                ('$title : $text'),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 12,
@@ -87,7 +79,7 @@ class _DropDownStores extends State<DropDownStores> {
 
   Future<void> getMarket() async {
     var res = await http.post(
-        Uri.parse(dataurl + "?country=" + Uri.encodeComponent(countryname)));
+        Uri.parse("$dataurl?country=${Uri.encodeComponent(countryname)}"));
     //attache countryname on parameter country in url
     if (res.statusCode == 200) {
       setState(() {
@@ -206,7 +198,7 @@ class ElevatedButtons extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: Colors.black,
-        height: this.height,
+        height: height,
         child:ElevatedButton(
                 onPressed: () async {},
                 style: ElevatedButton.styleFrom(

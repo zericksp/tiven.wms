@@ -10,18 +10,18 @@ final String _url = "https://www.tiven.com.br/crud/images/";
 String _status = "";
 String _creationdate = "";
 
-Future setQty(http.Client client, String _sSku, String _sEan, String _sTitle,
-    String _sLoc, String _sQty) async {
+Future setQty(http.Client client, String sSku, String sEan, String sTitle,
+    String sLoc, String sQty) async {
   String strparam = 'https://www.tiven.com.br/picking/updqty.php/';
   strparam += '?usr=zerick'; //' + $strUser;
 
-  var _created = DateTime.now();
-  strparam += '&created=$_created';
-  strparam += '&sku=$_sSku';
-  strparam += '&ean=$_sEan';
-  strparam += '&tit=$_sTitle';
-  strparam += '&loc=$_sLoc';
-  strparam += '&qty=$_sQty';
+  var created = DateTime.now();
+  strparam += '&created=$created';
+  strparam += '&sku=$sSku';
+  strparam += '&ean=$sEan';
+  strparam += '&tit=$sTitle';
+  strparam += '&loc=$sLoc';
+  strparam += '&qty=$sQty';
   strparam += '&status=picking';
 
   final response = await client.get(Uri.parse(strparam));
@@ -44,8 +44,9 @@ Future setPicked(http.Client client, String strUser, String nOrder,
 // Use the compute function to run parsePhotos in a separate isolate
 }
 
-Future<List<Repo>> fetchRepos(http.Client client) async {
+Future<List<Repo>> fetchRepos(http.Client client, String idUser) async {
   String strparam = 'https://www.tiven.com.br/picking/repos.php/';
+  strparam += "&iduser=$idUser";
   final response = await client.get(Uri.parse(strparam));
 
 // Use the compute function to run parsePhotos in a separate isolate

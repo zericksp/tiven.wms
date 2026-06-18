@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:core';
 import 'dart:io';
 import 'package:auto_size_text/auto_size_text.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 // import 'package:flutter_barcode_scanner/flutter_barcode_scanner.dart';
@@ -53,7 +54,6 @@ class _ConferenceState extends State<Conference> {
   int vol = 0;
   int countvol = 0;
   late String _KeyNfe = "";
-  final String _nfe = "";
   String _sku = "";
   String _location = "";
 
@@ -88,7 +88,7 @@ class _ConferenceState extends State<Conference> {
     super.dispose();
   }
 
-  _printLatestValue() {
+  void _printLatestValue() {
     print("Second text f");
   }
 
@@ -102,7 +102,7 @@ class _ConferenceState extends State<Conference> {
     myfocusNode = FocusNode();
   }
 
-  startBarcodeScanStream() async {
+  Future<void> startBarcodeScanStream() async {
     FlutterBarcodeScanner.getBarcodeStreamReceiver(
             "#ff6666", "Cancel", true, ScanMode.BARCODE)!
         .listen((barcode) => print(barcode));
@@ -232,39 +232,39 @@ class _ConferenceState extends State<Conference> {
   Check digit = 4
 */
 
-  getDigtin(_barcode) {
-    int _intval1 = 0;
-    int _intval2 = 0;
-    int $length = _barcode.toString().length - 1;
-    int _digit = 0;
+  dynamic getDigtin(barcode) {
+    int intval1 = 0;
+    int intval2 = 0;
+    int $length = barcode.toString().length - 1;
+    int digit = 0;
 
     for (int x = 0; x <= $length; x++) {
       print(x);
       if (x == $length) {
-        _intval2 += int.parse(_barcode.toString().substring(x, x + 1));
+        intval2 += int.parse(barcode.toString().substring(x, x + 1));
       } else if ((x % 2) == 0) {
-        _intval1 += int.parse(_barcode.toString().substring(x, x + 1));
+        intval1 += int.parse(barcode.toString().substring(x, x + 1));
       } else {
-        _intval2 += int.parse(_barcode.toString().substring(x, x + 1));
+        intval2 += int.parse(barcode.toString().substring(x, x + 1));
       }
     }
 
-    _intval2 = (_intval2 * 3);
+    intval2 = (intval2 * 3);
     // _sum = ((_intval1 + _intval2) * 1.0) / 10;
 
-    _digit = (((_intval1 + _intval2) / 10).ceil() * 10) - (_intval1 + _intval2);
+    digit = (((intval1 + intval2) / 10).ceil() * 10) - (intval1 + intval2);
 
     // ARREDONDAR.PARA.CIMA(142/10;0) * 10 - 142
 
-    if (_digit == 10) {
-      _digit = 0;
+    if (digit == 10) {
+      digit = 0;
     }
 
-    _barcode = _barcode.toString() + (_digit).toString();
-    return _barcode;
+    barcode = barcode.toString() + (digit).toString();
+    return barcode;
   }
 
-  splitBarcode() {
+  void splitBarcode() {
     if (_barcode.toString().length == 14) {
       if (_barcode.toString().substring(4, 8) == '6497') {
         _newquant =
@@ -282,31 +282,32 @@ class _ConferenceState extends State<Conference> {
   }
 
   Future<void> scanBarcodeNormal() async {
-    // ignore: unused_local_variable
     try {
-      barcodeScanRes = await FlutterBarcodeScanner.scanBarcode(
+      final result = await FlutterBarcodeScanner.scanBarcode(
           "#ff6666", "Cancelar", true, ScanMode.BARCODE);
-      _barcode = barcodeScanRes;
-    } on PlatformException {
+      if (result != null && result.isNotEmpty && result != '-1') {
+        barcodeScanRes = result;
+        _barcode = barcodeScanRes;
+      }
+    } catch (e) {
       barcodeScanRes = 'Falha ao verificar versão da plataforma.';
     }
   }
 
   // Platform messages are asynchronous, so we initialize in an async method.
-  Future<void> scanBarcodeLocation(_sku) async {
-    String locationScanRes;
-    // Platform messages may fail, so we use a try/catch PlatformException.
+  Future<void> scanBarcodeLocation(sku) async {
+    String locationScanRes = '';
     try {
-      locationScanRes = await FlutterBarcodeScanner.scanBarcode(
+      final result = await FlutterBarcodeScanner.scanBarcode(
           "#ff6666", "Cancelar", true, ScanMode.BARCODE);
-      String value = locationScanRes;
-      bool chkadd = _checkAddress(value);
-
-      if (chkadd == true) {
-        updateLocation(_sku, value.toString());
-        //print(locationScanRes);
+      if (result != null && result.isNotEmpty && result != '-1') {
+        locationScanRes = result;
+        bool chkadd = _checkAddress(locationScanRes);
+        if (chkadd == true) {
+          updateLocation(sku, locationScanRes);
+        }
       }
-    } on PlatformException {
+    } catch (e) {
       locationScanRes = 'Falha ao verificar versão da plataforma.';
     }
     // If the widget was removed from the tree while the asynchronous platform
@@ -319,12 +320,12 @@ class _ConferenceState extends State<Conference> {
     });
   }
 
-  Future updateLocation(String _code, String _local) async {
+  Future updateLocation(String code, String local) async {
     var response = await http.get(
         Uri.parse(
-            "http://www.tiven.com.br/crud/updateLocation.php?CODE=$_code&LOCAL=$_local"),
+            "http://www.tiven.com.br/crud/updateLocation.php?CODE=$code&LOCAL=$local"),
         headers: {"Accept": "application/json"});
-    print(_local);
+    print(local);
     if (response.contentLength! >= 100) {
       setState(() {
         var convertDataToJson = json.decode(response.body);
@@ -395,17 +396,17 @@ class _ConferenceState extends State<Conference> {
 //     print('_responseOtp: $_responseOtp');
 //   }
 
-  Future<String> postOTP(String _uri, String _message) async {
+  Future<String> postOTP(String uri, String message) async {
     HttpClient client = HttpClient();
-    HttpClientRequest request = await client.postUrl(Uri.parse(_uri));
-    request.write(_message);
+    HttpClientRequest request = await client.postUrl(Uri.parse(uri));
+    request.write(message);
     HttpClientResponse response = await request.close();
-    StringBuffer _buffer = StringBuffer();
+    StringBuffer buffer = StringBuffer();
     await for (String a in response.transform(utf8.decoder)) {
-      _buffer.write(a);
+      buffer.write(a);
     }
-    print("_buffer.toString: ${_buffer.toString()}");
-    return _buffer.toString();
+    print("_buffer.toString: ${buffer.toString()}");
+    return buffer.toString();
   }
 
   final ButtonStyle flatButtonStyle = TextButton.styleFrom(
@@ -432,15 +433,11 @@ class _ConferenceState extends State<Conference> {
             ),
             FadeInImage.assetNetwork(
               placeholder: 'assets/load.gif',
-              image: _url + _sku + '.jpg',
+              image: '$_url$_sku.jpg',
               height: 50,
             ),
           ]),
-          content: Text("Deseja realmente adicionar :\n" +
-              _newquant.toString() +
-              " * " +
-              _title +
-              "?"),
+          content: Text("Deseja realmente adicionar :\n$_newquant * $_title?"),
           actions: <Widget>[
             TextButton(
               style: flatButtonStyle,
@@ -546,13 +543,15 @@ class _ConferenceState extends State<Conference> {
             onTap: () {
               scanBarcodeNormal();
               setState(() {
-                myKeyController.text = barcodeScanRes;
-                _KeyNfe = myKeyController.text;
-                // getAccessKey(_KeyNfe, idUser);
-                // // dialog();
-                // myKeyController.clear();
-                // FocusScope.of(context).requestFocus(mykeyfocusNode);
-                // data = jsonDecode(data);
+                if (barcodeScanRes.isNotEmpty) {
+                  myKeyController.text = barcodeScanRes;
+                  _KeyNfe = myKeyController.text;
+                  data = getAccessKey(_KeyNfe, idUser);
+                  dialog();
+                  myKeyController.clear();
+                  FocusScope.of(context).requestFocus(mykeyfocusNode);
+                  data = jsonDecode(data);
+                }
               });
             },
             focusNode: mykeyfocusNode,
@@ -757,7 +756,9 @@ class _ConferenceState extends State<Conference> {
         Uri.parse(
             "http://www.tiven.com.br/crud/getProductByCode.php?CODE=$_barcode"),
         headers: {"Accept": "application/json"});
-    print(_barcode);
+    if (kDebugMode) {
+      print(_barcode);
+    }
     if (response.contentLength! >= 100) {
       var convertDataToJson = json.decode(response.body);
       //myController.text = '';
@@ -781,8 +782,7 @@ class _ConferenceState extends State<Conference> {
           ? 0
           : int.tryParse(data[0]['prd_quantidade3']))!;
       _quantot = _quant + _quant2 + _quant3;
-
-      _imagePath = "assets/images/" + data[0]['prd_sku'] + ".jpg";
+      _imagePath = "assets/images/${data[0]['prd_sku']}.jpg";
     } else {
       setState(() {
         _title = '';
@@ -792,17 +792,18 @@ class _ConferenceState extends State<Conference> {
         _location = "";
         _quant = 0;
         _imagePath = 'assets/images/notregistered.png';
-        print(_barcode);
+        if (kDebugMode) {
+          print(_barcode);
+        }
       });
     }
   }
 
-  Future<String> getAccessKey(_keyNfe, idUser) async {
+  Future<String> getAccessKey(String keyNfe, String idUser) async {
     var response = await http.get(
         // Uri.parse("http://localhost/crud/getNfeByKey.php?keynfe=43210490406117000162550000001151321942649269&idUser=13"),headers: {"Accept": "application/json"});
-        Uri.parse("https://www.tiven.com.br/crud/getNfeByKey.php?keynfe=$_keyNfe&idUser=$idUser"),
+        Uri.parse("https://www.tiven.com.br/crud/getNfeByKey.php?keynfe={$keyNfe}&idUser={$idUser}"),
         headers: {"Accept": "application/json"});
-    print(_barcode);
     if (response.contentLength! >= 100) {
       var convertDataToJson = json.decode(response.body);
       //myController.text = '';
@@ -816,13 +817,13 @@ class _ConferenceState extends State<Conference> {
     return data;
   }
 
-  Future getProdBling(String _code) async {
+  Future getProdBling(String code) async {
     var response = await http.get(
         Uri.parse("https://bling.com.br/Api/v2/produto/" +
-            _code +
+            code +
             "/json&apikey=a64370ceea64ecf3f2831d211fea334d3fd1606cca506679de43079a97d821ddc56cda49&estoque=S"),
         headers: {"Accept": "application/json"});
-    print(_code);
+    print(code);
     if (response.contentLength! >= 150) {
       setState(() {
         var data = json.decode(response.body);
@@ -841,29 +842,29 @@ class _ConferenceState extends State<Conference> {
         _location = "";
         _quant = 0;
         _imagePath = 'assets/images/notregistered.png';
-        print(_code);
+        print(code);
       });
     }
   }
 
   Future updateProd(
-      String _barcode, String _sku, String _location, String _quant) async {
+      String barcode, String sku, String location, String quant) async {
     var response = await http.get(
         Uri.parse(
-            "http://www.tiven.com.br/crud/updateProduct.php?CODE=$_barcode&SKU=$_sku&LOCAL=1&ADDRESS=$_location&QUANTITY=$_quant"),
+            "http://www.tiven.com.br/crud/updateProduct.php?CODE=$barcode&SKU=$sku&LOCAL=1&ADDRESS=$location&QUANTITY=$quant"),
         headers: {"Accept": "application/json"});
 
     setState(() {
       if (response.contentLength! >= 20) {
-        print(_barcode);
+        print(barcode);
       }
     });
   }
 
-  Future checkInventory(String _barcode, int _newquant, String _user) async {
+  Future checkInventory(String barcode, int newquant, String user) async {
     await http.get(
         Uri.parse(
-            "http://www.tiven.com.br/crud/updInventory.php?BARCODE=$_barcode&QUANTITY=$_newquant&USER=$_user"),
+            "http://www.tiven.com.br/crud/updInventory.php?BARCODE=$barcode&QUANTITY=$newquant&USER=$user"),
         headers: {"Accept": "application/json"});
   }
 
@@ -921,7 +922,7 @@ class _ConferenceState extends State<Conference> {
           ),
         ),
         actions: <Widget>[
-          Container(
+          SizedBox(
             width: MediaQuery.of(context).size.width * 0.5,
             child: Padding(
               padding: const EdgeInsets.all(1),
@@ -975,24 +976,26 @@ class _ConferenceState extends State<Conference> {
                 ),
               ),
             ),
-            _KeyNfe.length > 0
+            _KeyNfe.isNotEmpty
                 ? RefreshIndicator(
                     onRefresh: _onRefresh,
                     child: FutureBuilder<List<NFe>>(
-                      future: fetchInvoice(http.Client(), this.user,
-                          this._KeyNfe.substring(25, 10)),
+                      future: fetchInvoice(
+                          http.Client(), user, _KeyNfe.substring(25, 10)),
                       builder: (context, snapshot) {
                         if (snapshot.hasError) {
-                          print(snapshot.error);
+                          if (kDebugMode) {
+                            print(snapshot.error);
+                          }
                           return Center(child: CircularProgressIndicator());
                         } else {
                           if (snapshot.hasData) {
-                            this._qty = snapshot.data!.length;
+                            _qty = snapshot.data!.length;
                             _onRefresh();
                             return PhotosList(
-                                invoice: snapshot.data!, user: this.user);
+                                invoice: snapshot.data!, user: user);
                           } else {
-                            this._qty = 0;
+                            _qty = 0;
                             return Center(child: CircularProgressIndicator());
                           }
                         }
@@ -1008,10 +1011,10 @@ class _ConferenceState extends State<Conference> {
 
   Future<void> _onRefresh() {
     Completer<Null> completer = Completer<Null>();
-    Timer timer = Timer(Duration(seconds: 2), () {
+    Timer(Duration(seconds: 2), () {
       completer.complete();
     });
-    this._qty = this._qty;
+    _qty = _qty;
     return completer.future;
   }
 
@@ -1075,7 +1078,7 @@ class _ConferenceState extends State<Conference> {
         children: [
           Center(
             child: AutoSizeText(
-              '$_title',
+              _title,
               textAlign: TextAlign.center,
               style: TextStyle(
                   fontSize: 22,
@@ -1220,7 +1223,7 @@ class PhotosList extends StatefulWidget {
   PhotosList({super.key, required this.invoice, required this.user});
 
   @override
-  _PhotosListState createState() => _PhotosListState(usr: this.user);
+  _PhotosListState createState() => _PhotosListState(usr: user);
 }
 
 class _PhotosListState extends State<PhotosList> {
@@ -1233,13 +1236,12 @@ class _PhotosListState extends State<PhotosList> {
   String usr;
   late bool saved;
 
-  get child => null;
+  Null get child => null;
   final String _url = "https://www.tiven.com.br/crud/images/";
 
   // String _scanBarcode = 'Desconhecido';
   // String _title = "";
   // int _barcode = 0;
-  String _sku = "";
   int captured = 0;
 
   // int _quant = 0;
@@ -1480,7 +1482,7 @@ class _PhotosListState extends State<PhotosList> {
                             ],
                           ),
                         ),
-                        subtitle: Container(
+                        subtitle: SizedBox(
                           width: 20.0,
                           height: 55.0,
                           child: Padding(

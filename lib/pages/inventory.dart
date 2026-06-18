@@ -32,7 +32,7 @@ class _InventoryState extends State<Inventory> {
       debugShowCheckedModeBanner: false,
       //theme: ThemeData.from(colorScheme: ColorScheme.light()),
       title: appTitle,
-      home: InventoryPage(title: appTitle, user: this.user),
+      home: InventoryPage(title: appTitle, user: user),
     );
   }
 }
@@ -69,9 +69,9 @@ class _InventoryPageState extends State<InventoryPage> {
 
   _InventoryPageState({required this.usr});
 
-  Future<void> _total(_newqty) async {
+  Future<void> _total(newqty) async {
     setState(() {
-      _newquant = _newqty;
+      _newquant = newqty;
       contentText = _newquant.toString();
       myQtyController.text = contentText;
     });
@@ -173,7 +173,7 @@ class _InventoryPageState extends State<InventoryPage> {
             child: Row(
               children: [
                 Text(
-                  this._qty == 0 ? "" : this._qty.toString(),
+                  _qty == 0 ? "" : _qty.toString(),
                   style: TextStyle(
                       color: Color.fromARGB(255, 109, 106, 106),
                       fontSize: 10,
@@ -278,49 +278,51 @@ class _InventoryPageState extends State<InventoryPage> {
   }
 
   Future<void> scanBarcodeNormal() async {
-    String barcodeScanRes;
+    String barcodeScanRes = '';
     // ignore: unused_local_variable
     try {
       barcodeScanRes = await FlutterBarcodeScanner.scanBarcode(
           "#ff6666", "Cancelar", true, ScanMode.BARCODE);
-      _barcode = int.parse(barcodeScanRes);
-    } on PlatformException {
+      if (barcodeScanRes.isNotEmpty && barcodeScanRes != '-1') {
+        _barcode = int.parse(barcodeScanRes);
+      }
+    } catch (e) {
       barcodeScanRes = 'Falha ao verificar versão da plataforma.';
     }
   }
 
-  getDigtin(_barcode) {
-    int _intval1 = 0;
-    int _intval2 = 0;
-    int _round = 0;
-    int $length = _barcode.toString().length - 1;
-    double _sum = 0;
-    int _digit = 0;
+  dynamic getDigtin(barcode) {
+    int intval1 = 0;
+    int intval2 = 0;
+    int round = 0;
+    int $length = barcode.toString().length - 1;
+    double sum = 0;
+    int digit = 0;
 
     for (int x = 0; x <= $length; x++) {
       print(x);
       if (x == $length) {
-        _intval2 += int.parse(_barcode.toString().substring(x, x + 1));
+        intval2 += int.parse(barcode.toString().substring(x, x + 1));
       } else if ((x % 2) == 0) {
-        _intval1 += int.parse(_barcode.toString().substring(x, x + 1));
+        intval1 += int.parse(barcode.toString().substring(x, x + 1));
       } else {
-        _intval2 += int.parse(_barcode.toString().substring(x, x + 1));
+        intval2 += int.parse(barcode.toString().substring(x, x + 1));
       }
     }
 
-    _intval2 = (_intval2 * 3);
+    intval2 = (intval2 * 3);
 
-    _sum = (_intval1 + _intval2) * 1.0;
-    _sum = (_sum / 10);
-    _round = _sum.round() + 1;
-    _round = _round * 10;
-    _digit = _round - (_intval1 + _intval2);
-    if (_digit == 10) {
-      _digit = 0;
+    sum = (intval1 + intval2) * 1.0;
+    sum = (sum / 10);
+    round = sum.round() + 1;
+    round = round * 10;
+    digit = round - (intval1 + intval2);
+    if (digit == 10) {
+      digit = 0;
     }
 
-    _barcode = _barcode.toString() + (_digit).toString();
-    return _barcode;
+    barcode = barcode.toString() + (digit).toString();
+    return barcode;
   }
 
   Future<void> splitBarcode() async {
@@ -344,11 +346,11 @@ class _InventoryPageState extends State<InventoryPage> {
     });
   }
 
-  Future insertInventory_(String _inventory, String _team, String _sku,
-      String _barcode, String _newquant, String _user) async {
+  Future insertInventory_(String inventory, String team, String sku,
+      String barcode, String newquant, String user) async {
     var response = await http.get(
         Uri.parse(
-            "https://www.tiven.com.br/crud/insInventory.php?inventory=$_inventory&team=$_team&barcode=$_barcode&sku=$_sku&quantity=$_newquant&user=$_user"),
+            "https://www.tiven.com.br/crud/insInventory.php?inventory=$inventory&team=$team&barcode=$barcode&sku=$sku&quantity=$newquant&user=$user"),
         headers: {"Accept": "application/json"});
 
     if (response.contentLength! >= 100) {
@@ -356,11 +358,11 @@ class _InventoryPageState extends State<InventoryPage> {
     }
   }
 
-  Future insertInventory(String _inventory, String _team, String _sku,
-      String _barcode, String _newquant, String _user) async {
+  Future insertInventory(String inventory, String team, String sku,
+      String barcode, String newquant, String user) async {
     var response = await http.get(
         Uri.parse(
-            "https://www.tiven.com.br/crud/insInventory.php?inventory=$_inventory&team=$_team&barcode=$_barcode&sku=$_sku&quantity=$_newquant&user=$_user"),
+            "https://www.tiven.com.br/crud/insInventory.php?inventory=$inventory&team=$team&barcode=$barcode&sku=$sku&quantity=$newquant&user=$user"),
         headers: {"Accept": "application/json"});
 
     setState(() {
@@ -553,7 +555,7 @@ class _InventoryPageState extends State<InventoryPage> {
                         _sku.toString(),
                         _barcode.toString(),
                         _newquant.toString(),
-                        this.usr);
+                        usr);
                     clearFields();
                     Navigator.of(context).pop();
                   }),
@@ -725,7 +727,7 @@ class _InventoryPageState extends State<InventoryPage> {
       height: 500,
       color: Colors.black,
       child: FutureBuilder<List<InvItems>>(
-        future: fetchInvItems(this.usr, true, _value.toString()),
+        future: fetchInvItems(usr, true, _value.toString()),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.none &&
               !snapshot.hasData) {
@@ -749,7 +751,7 @@ class _InventoryPageState extends State<InventoryPage> {
           } else if (snapshot.connectionState == ConnectionState.done) {}
           _onRefresh();
           Future.delayed(Duration(seconds: 1));
-          return ItemsList(Items: snapshot.data!, usr: this.usr);
+          return ItemsList(Items: snapshot.data!, usr: usr);
         },
       ),
     );
@@ -764,12 +766,12 @@ class _InventoryPageState extends State<InventoryPage> {
           : RefreshIndicator(
               onRefresh: _onRefresh,
               child: FutureBuilder<List<InvItems>>(
-                future: fetchInvItems(this.usr, true, _value.toString()),
+                future: fetchInvItems(usr, true, _value.toString()),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.done) {
                     // this._qty = snapshot.data.length;
                     _onRefresh();
-                    return ItemsList(Items: snapshot.data!, usr: this.usr);
+                    return ItemsList(Items: snapshot.data!, usr: usr);
                   } else if (snapshot.hasError == true) {
                     if (kDebugMode) {
                       print(snapshot.error);
@@ -788,11 +790,11 @@ class _InventoryPageState extends State<InventoryPage> {
   }
 
   Future<void> _onRefresh() {
-    Completer<Null> completer = Completer<Null>();
-    Timer timer = Timer(Duration(seconds: 1), () {
+    var completer = Completer<Null>();
+    Timer(Duration(seconds: 1), () {
       completer.complete();
     });
-    this._qty = this._qty;
+    _qty = _qty;
     return completer.future;
   }
 }
@@ -805,7 +807,7 @@ class ItemsList extends StatefulWidget {
       : super(key: key);
 
   @override
-  _ItemsListState createState() => _ItemsListState(usr: this.usr);
+  _ItemsListState createState() => _ItemsListState(usr: usr);
 }
 
 class _ItemsListState extends State<ItemsList> {
@@ -816,7 +818,7 @@ class _ItemsListState extends State<ItemsList> {
   late bool saved;
   final myController = TextEditingController();
 
-  get child => null;
+  Null get child => null;
   final String _url = "https://www.tiven.com.br/crud/images/";
   final String _scanBarcode = 'Desconhecido';
   final String _title = "";
@@ -846,7 +848,7 @@ class _ItemsListState extends State<ItemsList> {
     super.dispose();
   }
 
-  _printLatestValue() {
+  void _printLatestValue() {
     print("Second text f");
   }
 
@@ -857,10 +859,10 @@ class _ItemsListState extends State<ItemsList> {
     );
   }
 
-  Future<void> sendMessage(String _code, String _message) async {
+  Future<void> sendMessage(String code, String message) async {
     var response = await http.get(
         Uri.parse(
-            "http://www.tiven.com.br/crud/insertMessage.php?CODE=$_code&MESSAGE=$_message"),
+            "http://www.tiven.com.br/crud/insertMessage.php?CODE=$code&MESSAGE=$message"),
         headers: {"Accept": "application/json"});
 
     if (response.contentLength! >= 1) {
@@ -868,11 +870,11 @@ class _ItemsListState extends State<ItemsList> {
     }
   }
 
-  Future insIssue(String _user, String _sku, String _type, bool _status) async {
+  Future insIssue(String user, String sku, String type, bool status) async {
     saved = false;
     var response = await http.get(
         Uri.parse(
-            "http://www.tiven.com.br/crud/insertIssue.php?isu_user=$_user&isu_sku=$_sku&isu_type=$_type&isu_status=$_status"),
+            "http://www.tiven.com.br/crud/insertIssue.php?isu_user=$user&isu_sku=$sku&isu_type=$type&isu_status=$status"),
         headers: {"Accept": "application/json"});
     setState(() {
       if (response.contentLength! >= 20) {

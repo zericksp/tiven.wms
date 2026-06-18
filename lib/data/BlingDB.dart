@@ -16,7 +16,7 @@ Future<List<Photo>> getBlingOrders() async{
 };
 var dio = Dio();
 var response = await dio.request(
-  url + urlOrders + 'page=1;limit=100&filters=dataEmissao[2024-02-13T12:49:20.000Z TO 2024-02-14T23:59:00.000Z]; idSituacao[68912, 15,6,9]',
+  '$url${urlOrders}page=1;limit=100&filters=dataEmissao[2024-02-13T12:49:20.000Z TO 2024-02-14T23:59:00.000Z]; idSituacao[68912, 15,6,9]',
   options: Options(
     method: 'GET',
     headers: headers,

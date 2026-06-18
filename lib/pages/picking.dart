@@ -66,8 +66,10 @@ class _PickingPageState extends State<PickingPage> {
   }
 
   Future<void> fetchLojas() async {
-    final response = await http
-        .get(Uri.parse('https://www.tiven.com.br/picking/getStores.php'));
+    // Filtra apenas as lojas onde loj_blingId == "1"
+    final int blingid = 1;
+    final response = await http.get(Uri.parse(
+        'https://www.tiven.com.br/picking/getStores.php?idbling=$blingid'));
 
     if (response.statusCode == 200) {
       // Decodifica o JSON
@@ -76,9 +78,11 @@ class _PickingPageState extends State<PickingPage> {
       // Obtém apenas os dados da chave "data"
       List<dynamic> data = jsonData["data"];
 
-// Filtra apenas as lojas onde loj_blingId == "1"
       List<Map<String, String>> lojasFiltradas = data
-          .where((item) => item['loj_blingId'].toString() == "1")
+          .where((item) =>
+              item['loj_blingId'].toString() == "1" &&
+              (item['loj_token'] == null ||
+                  item['loj_token'].toString().isEmpty))
           .map((item) => {
                 'id': item['loj_codigo'].toString(),
                 'nome': item['loj_nick'].toString()
@@ -171,24 +175,28 @@ class _PickingPageState extends State<PickingPage> {
                         style: TextStyle(
                           fontWeight: FontWeight.w500,
                           color: Colors.white,
-                          fontSize: 12,
+                          fontSize: 16,
                         ),
                       ),
                     ),
                     // Opções dinâmicas carregadas de `fetchLojas`
                     ...lojas.map((loja) {
                       return DropdownMenuItem(
-                        value: loja['id'], // Usa o ID da loja como valor
-                        child: Text(
-                          loja['nome'] ?? 'Loja Sem Nome', // Usa o nome da loja
-                          style: TextStyle(
-                            fontWeight: FontWeight.w400,
-                            fontSize: 14,
-                            color: Colors.white,
+                        value: loja['id'],
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            loja['nome'] ?? 'Loja Sem Nome',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w500,
+                              height: 0.5, // padrão é ~1.2
+                              fontSize: 16,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       );
-                    }).toList(),
+                    }),
                   ],
                   dropdownColor: Color.fromARGB(255, 34, 31, 31),
                 ),
@@ -240,7 +248,7 @@ class _PickingPageState extends State<PickingPage> {
 
   Future<void> _onRefresh() {
     Completer<Null> completer = Completer<Null>();
-    Timer timer = Timer(Duration(seconds: 1), () {
+    Timer(Duration(seconds: 1), () {
       completer.complete();
     });
     _qty = _qty;
@@ -264,14 +272,14 @@ class _PhotosListState extends State<PhotosList> {
   String idUser;
   late bool saved;
 
-  get child => null;
+  Null get child => null;
   final String _url = "https://www.tiven.com.br/crud/images/";
   final String _scanBarcode = 'Desconhecido';
   String _title = "";
   int _barcode = 0;
   String _sku = "";
-  final int _location2 = 0;
-  final int _location3 = 0;
+  late int _location2;
+  late int _location3;
   int _quant = 0;
   final int _quant2 = 0;
   final int _quant3 = 0;
@@ -604,10 +612,10 @@ class _PhotosListState extends State<PhotosList> {
     );
   }
 
-  Future<void> sendMessage(String _code, String _message) async {
+  Future<void> sendMessage(String code, String message) async {
     var response = await http.get(
         Uri.parse(
-            "http://www.tiven.com.br/crud/insertMessage.php?CODE=$_code&MESSAGE=$_message"),
+            "http://www.tiven.com.br/crud/insertMessage.php?CODE=$code&MESSAGE=$message"),
         headers: {"Accept": "application/json"});
 
     if (response.contentLength! >= 1) {
@@ -616,20 +624,22 @@ class _PhotosListState extends State<PhotosList> {
   }
 
   // Platform messages are asynchronous, so we initialize in an async method.
-  Future<void> scanBarcodeLocation(_sku) async {
-    String locationScanRes;
-    // Platform messages may fail, so we use a try/catch PlatformException.
+  Future<void> scanBarcodeLocation(sku) async {
+    String locationScanRes = '';
+    // Platform messages may fail, so we use a try/catch for all exceptions.
     try {
       locationScanRes = await FlutterBarcodeScanner.scanBarcode(
           "#ff6666", "Cancelar", true, ScanMode.BARCODE);
-      String value = locationScanRes;
-      bool chkadd = _checkAddress(value);
+      if (locationScanRes.isNotEmpty && locationScanRes != '-1') {
+        String value = locationScanRes;
+        bool chkadd = _checkAddress(value);
 
-      if (chkadd == true) {
-        updateLocation(_sku, value.toString());
-        //print(locationScanRes);
+        if (chkadd == true) {
+          updateLocation(sku, value.toString());
+          //print(locationScanRes);
+        }
       }
-    } on PlatformException {
+    } catch (e) {
       locationScanRes = 'Falha ao verificar versão da plataforma.';
     }
     // If the widget was removed from the tree while the asynchronous platform
@@ -640,12 +650,12 @@ class _PhotosListState extends State<PhotosList> {
     setState(() {});
   }
 
-  Future updateLocation(String _code, String _local) async {
+  Future updateLocation(String code, String local) async {
     var response = await http.get(
         Uri.parse(
-            "http://www.tiven.com.br/crud/updateLocation.php?CODE=$_code&LOCAL=$_local"),
+            "http://www.tiven.com.br/crud/updateLocation.php?CODE=$code&LOCAL=$local"),
         headers: {"Accept": "application/json"});
-    print(_local);
+    print(local);
     if (response.contentLength! >= 100) {
       setState(() {
         var convertDataToJson = json.decode(response.body);
@@ -660,11 +670,11 @@ class _PhotosListState extends State<PhotosList> {
     }
   }
 
-  Future insIssue(String _user, String _sku, String _type, bool _status) async {
+  Future insIssue(String user, String sku, String type, bool status) async {
     saved = false;
     var response = await http.get(
         Uri.parse(
-            "http://www.tiven.com.br/crud/insertIssue.php?isu_user=$_user&isu_sku=$_sku&isu_type=$_type&isu_status=$_status"),
+            "http://www.tiven.com.br/crud/insertIssue.php?isu_user=$user&isu_sku=$sku&isu_type=$type&isu_status=$status"),
         headers: {"Accept": "application/json"});
     setState(() {
       if (response.contentLength! >= 20) {
@@ -729,52 +739,54 @@ class _PhotosListState extends State<PhotosList> {
   }
 
   Future<void> scanBarcodeNormal(int idx) async {
-    String barcodeScanRes;
-    int _intCaptured = 1;
-    // Platform messages may fail, so we use a try/catch PlatformException.
+    String barcodeScanRes = '';
+    int intCaptured = 1;
+    // Platform messages may fail, so we use a try/catch for all exceptions.
     try {
       // scan barrcode from external source
       barcodeScanRes = await FlutterBarcodeScanner.scanBarcode(
           "#ff6666", "Cancelar", true, ScanMode.BARCODE);
 
-      // check for DUN14
-      if (barcodeScanRes.length == 14) {
-        _intCaptured = showInt(int.parse(barcodeScanRes.substring(0, 1)));
-        barcodeScanRes = barcodeScanRes.substring(1, 13);
-      }
+      if (barcodeScanRes.isNotEmpty && barcodeScanRes != '-1') {
+        // check for DUN14
+        if (barcodeScanRes.length == 14) {
+          intCaptured = showInt(int.parse(barcodeScanRes.substring(0, 1)));
+          barcodeScanRes = barcodeScanRes.substring(1, 13);
+        }
 
-      // check if scanner captured valid code found
-      if (barcodeScanRes.toString() == widget.photos[idx].ean.toString() ||
-          barcodeScanRes.toString() == widget.photos[idx].sku.toString()) {
-        if (_intCaptured <=
-            (int.parse(widget.photos[idx].qty) -
-                    int.parse(widget.photos[idx].captured)) +
-                1) {
+        // check if scanner captured valid code found
+        if (barcodeScanRes.toString() == widget.photos[idx].ean.toString() ||
+            barcodeScanRes.toString() == widget.photos[idx].sku.toString()) {
+          if (intCaptured <=
+              (int.parse(widget.photos[idx].qty) -
+                      int.parse(widget.photos[idx].captured)) +
+                  1) {
+            setState(
+              () {
+                widget.photos[idx].captured =
+                    (int.parse(widget.photos[idx].captured) + intCaptured)
+                        .toString();
+                setQty(
+                    http.Client(),
+                    widget.photos[idx].sku,
+                    widget.photos[idx].ean,
+                    widget.photos[idx].title,
+                    widget.photos[idx].address,
+                    '1');
+              },
+            );
+          }
+        }
+        print(barcodeScanRes);
+        if (widget.photos[idx].captured == widget.photos[idx].qty) {
           setState(
             () {
-              widget.photos[idx].captured =
-                  (int.parse(widget.photos[idx].captured) + _intCaptured)
-                      .toString();
-              setQty(
-                  http.Client(),
-                  widget.photos[idx].sku,
-                  widget.photos[idx].ean,
-                  widget.photos[idx].title,
-                  widget.photos[idx].address,
-                  '1');
+              widget.photos.removeAt(idx);
             },
           );
         }
       }
-      print(barcodeScanRes);
-      if (widget.photos[idx].captured == widget.photos[idx].qty) {
-        setState(
-          () {
-            widget.photos.removeAt(idx);
-          },
-        );
-      }
-    } on PlatformException {
+    } catch (e) {
       barcodeScanRes = 'Falha ao verificar versão da plataforma.';
     }
 
@@ -886,7 +898,7 @@ class _PhotosListState extends State<PhotosList> {
     );
   }
 
-  void _showDialogStaff(context, idx, _user) {
+  void _showDialogStaff(context, idx, user) {
     showDialog(
       context: context,
       builder: (context) {
@@ -939,7 +951,7 @@ class _PhotosListState extends State<PhotosList> {
                                   ),
                                 ),
                                 onPressed: () async {
-                                  await insIssue(_user, widget.photos[idx].sku,
+                                  await insIssue(user, widget.photos[idx].sku,
                                       "Nao Localizado", false);
                                   if (saved) {
                                     snacksaved();
@@ -1154,7 +1166,7 @@ class _PhotosListState extends State<PhotosList> {
     );
   }
 
-  snacksaved() {
+  void snacksaved() {
     final snackbar = SnackBar(
       backgroundColor: saved
           ? Colors.blueAccent[300]
@@ -1174,9 +1186,6 @@ class _PhotosListState extends State<PhotosList> {
   }
 
   bool isNumeric(String s) {
-    if (s == null) {
-      return false;
-    }
     return double.tryParse(s) != null;
   }
 

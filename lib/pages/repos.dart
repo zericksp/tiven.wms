@@ -12,20 +12,26 @@ import 'package:tiven/pages/items.dart';
 
 class Repositing extends StatefulWidget {
   final String title;
+  final String idUser;
   final String username;
 
-  const Repositing({Key? key, required this.title, required this.username})
+  const Repositing(
+      {Key? key,
+      required this.title,
+      required this.idUser,
+      required this.username})
       : super(key: key);
 
   @override
   _RepositingState createState() =>
-      _RepositingState(title: title, user: username);
+      _RepositingState(title: title, idUser: idUser, user: username);
 }
 
 class _RepositingState extends State<Repositing> {
-  final String title, user;
+  final String title, idUser, user;
 
-  _RepositingState({required this.title, required this.user});
+  _RepositingState(
+      {required this.title, required this.idUser, required this.user});
 
   @override
   Widget build(BuildContext context) {
@@ -34,24 +40,29 @@ class _RepositingState extends State<Repositing> {
       debugShowCheckedModeBanner: false,
       //theme: ThemeData.from(colorScheme: ColorScheme.light()),
       title: appTitle,
-      home: RepositingPage(title: appTitle, user: user),
+      home: RepositingPage(title: appTitle, idUser: idUser, user: user),
     );
   }
 }
 
 class RepositingPage extends StatefulWidget {
-  final String title, user;
+  final String title, idUser, user;
 
-  const RepositingPage({super.key, required this.title, required this.user});
+  const RepositingPage(
+      {super.key,
+      required this.title,
+      required this.idUser,
+      required this.user});
 
   @override
-  _RepositingPageState createState() => _RepositingPageState(usr: user);
+  _RepositingPageState createState() =>
+      _RepositingPageState(idUser: idUser, usr: user);
 }
 
 class _RepositingPageState extends State<RepositingPage> {
-  late final String title, usr;
+  late final String title, idUser, usr;
 
-  _RepositingPageState({required this.usr});
+  _RepositingPageState({required this.usr, required String idUser});
 
   @override
   Widget build(BuildContext context) {
@@ -70,8 +81,9 @@ class _RepositingPageState extends State<RepositingPage> {
             ],
           )),
       body: RefreshIndicator(
+        onRefresh: _onRefresh,
         child: FutureBuilder<List<Repo>>(
-          future: fetchRepos(http.Client()),
+          future: fetchRepos(http.Client(), idUser),
           builder: (context, snapshot) {
             if (snapshot.hasError) print(snapshot.error);
             return snapshot.hasData
@@ -79,7 +91,6 @@ class _RepositingPageState extends State<RepositingPage> {
                 : Center(child: CircularProgressIndicator());
           },
         ),
-        onRefresh: _onRefresh,
       ),
     );
   }
@@ -87,7 +98,7 @@ class _RepositingPageState extends State<RepositingPage> {
 
 Future<Null> _onRefresh() {
   Completer<Null> completer = Completer<Null>();
-  Timer timer = Timer(Duration(seconds: 3), () {
+  Timer(Duration(seconds: 3), () {
     completer.complete();
   });
   return completer.future;
@@ -106,18 +117,18 @@ class _ReposListState extends State<ReposList> {
   late String _scanLocation;
   late String _location;
 
-  get child => null;
+  Null get child => null;
   final String _url = "https://www.tiven.com.br/crud/images/";
-  String _scanBarcode = 'Desconhecido';
+  final String _scanBarcode = 'Desconhecido';
   String _title = "";
   int _barcode = 0;
   String _sku = "";
-  int _location2 = 0;
-  int _location3 = 0;
+  final int _location2 = 0;
+  final int _location3 = 0;
   int _quant = 0;
-  int _quant2 = 0;
-  int _quant3 = 0;
-  int _quantot = 0;
+  final int _quant2 = 0;
+  final int _quant3 = 0;
+  final int _quantot = 0;
   String _imagePath = '';
   var data;
 
@@ -292,20 +303,22 @@ class _ReposListState extends State<ReposList> {
   }
 
   // Platform messages are asynchronous, so we initialize in an async method.
-  Future<void> scanBarcodeLocation(_sku) async {
-    String locationScanRes;
-    // Platform messages may fail, so we use a try/catch PlatformException.
+  Future<void> scanBarcodeLocation(sku) async {
+    String locationScanRes = '';
+    // Platform messages may fail, so we use a try/catch for all exceptions.
     try {
       locationScanRes = await FlutterBarcodeScanner.scanBarcode(
           "#ff6666", "Cancelar", true, ScanMode.BARCODE);
-      String value = locationScanRes;
-      bool chkadd = _checkAddress(value);
+      if (locationScanRes.isNotEmpty && locationScanRes != '-1') {
+        String value = locationScanRes;
+        bool chkadd = _checkAddress(value);
 
-      if (chkadd == true) {
-        updateLocation(_sku, value.toString());
-        //print(locationScanRes);
+        if (chkadd == true) {
+          updateLocation(sku, value.toString());
+          //print(locationScanRes);
+        }
       }
-    } on PlatformException {
+    } catch (e) {
       locationScanRes = 'Falha ao verificar versão da plataforma.';
     }
     // If the widget was removed from the tree while the asynchronous platform
@@ -318,12 +331,12 @@ class _ReposListState extends State<ReposList> {
     });
   }
 
-  Future updateLocation(String _code, String _local) async {
+  Future updateLocation(String code, String local) async {
     var response = await http.get(
         Uri.parse(
-            "http://www.tiven.com.br/crud/updateLocation.php?CODE=$_code&LOCAL=$_local"),
+            "http://www.tiven.com.br/crud/updateLocation.php?CODE=$code&LOCAL=$local"),
         headers: {"Accept": "application/json"});
-    print(_local);
+    print(local);
     if (response.contentLength! >= 100) {
       setState(() {
         var convertDataToJson = json.decode(response.body);
@@ -340,7 +353,7 @@ class _ReposListState extends State<ReposList> {
   }
 
   Future<void> scanBarcodeNormal(int idx) async {
-    String barcodeScanRes;
+    String barcodeScanRes = '';
     final snackBar = SnackBar(
       backgroundColor: Colors.blueGrey[300],
       content: Text('Todos foram capturados'),
@@ -353,40 +366,42 @@ class _ReposListState extends State<ReposList> {
       ),
       duration: Duration(seconds: 2),
     );
-    // Platform messages may fail, so we use a try/catch PlatformException.
+    // Platform messages may fail, so we use a try/catch for all exceptions.
     try {
       barcodeScanRes = await FlutterBarcodeScanner.scanBarcode(
           "#ff6666", "Cancelar", true, ScanMode.BARCODE);
-      if (barcodeScanRes.length == 14) {
-        //_newquant = int.parse(barcodeScanRes.substring(0, 1));
-        barcodeScanRes = barcodeScanRes.substring(1, 13) + '';
-        setState(() {});
-      } else if (barcodeScanRes.length == 13) {
-        if (barcodeScanRes.toString() == widget.repos[idx].ean.toString()) {
-          setState(
-            () {},
-          );
+      if (barcodeScanRes.isNotEmpty && barcodeScanRes != '-1') {
+        if (barcodeScanRes.length == 14) {
+          //_newquant = int.parse(barcodeScanRes.substring(0, 1));
+          barcodeScanRes = '${barcodeScanRes.substring(1, 13)}';
+          setState(() {});
+        } else if (barcodeScanRes.length == 13) {
+          if (barcodeScanRes.toString() == widget.repos[idx].ean.toString()) {
+            setState(
+              () {},
+            );
+          }
+        } else if (barcodeScanRes.length <= 8) {
+          if (barcodeScanRes.toString() == widget.repos[idx].sku.toString()) {
+            setState(
+              () {
+                setQty(
+                    http.Client(),
+                    widget.repos[idx].sku,
+                    widget.repos[idx].ean,
+                    widget.repos[idx].title,
+                    widget.repos[idx].address,
+                    '1');
+              },
+            );
+          }
         }
-      } else if (barcodeScanRes.length <= 8) {
-        if (barcodeScanRes.toString() == widget.repos[idx].sku.toString()) {
-          setState(
-            () {
-              setQty(
-                  http.Client(),
-                  widget.repos[idx].sku,
-                  widget.repos[idx].ean,
-                  widget.repos[idx].title,
-                  widget.repos[idx].address,
-                  '1');
-            },
-          );
+        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        if (kDebugMode) {
+          print(barcodeScanRes);
         }
       }
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      if (kDebugMode) {
-        print(barcodeScanRes);
-      }
-    } on PlatformException {
+    } catch (e) {
       barcodeScanRes = 'Falha ao verificar versão da plataforma.';
     }
   }
@@ -492,9 +507,6 @@ class _ReposListState extends State<ReposList> {
   }
 
   bool isNumeric(String s) {
-    if (s == null) {
-      return false;
-    }
     return double.tryParse(s) != null;
   }
 

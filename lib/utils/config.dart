@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class Config {
@@ -9,21 +8,21 @@ class Config {
 
 class SetScan{
 
-  static Future setScan(_qrcode,  _barcode) async {
+  static Future setScan(qrcode,  barcode) async {
     var response = await http.get(
         Uri.parse(
-        "http://www.tiven.com.br/crud/prc_setScanByMachine.php?MACHINE=${_qrcode.toString()}&VALUE=${_barcode.toString()}"),
+        "http://www.tiven.com.br/crud/prc_setScanByMachine.php?MACHINE=${qrcode.toString()}&VALUE=${barcode.toString()}"),
       headers: {"Accept": "application/json"});
-    print(_qrcode);
+    print(qrcode);
     return response.body;
   }
 
-  static Future setScanReturn(_qrcode, _key) async {
+  static Future setScanReturn(qrcode, key) async {
     var response = await http.get(
         Uri.parse(
-            "http://www.tiven.com.br/crud/prc_setScanByMachine.php?MACHINE=${_qrcode.toString()}&VALUE=${_key}"),
+            "http://www.tiven.com.br/crud/prc_setScanByMachine.php?MACHINE=${qrcode.toString()}&VALUE=$key"),
         headers: {"Accept": "application/json"});
-    print(_qrcode);
+    print(qrcode);
     return response.body;
   }
 } 

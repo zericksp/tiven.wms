@@ -12,12 +12,12 @@ import 'package:tiven/utils/next_screen_dart';
 
 class MyHomePage extends StatefulWidget {
   @override
-  _MyHomePageState createState() => new _MyHomePageState();
+  _MyHomePageState createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  var _pseudoController = new TextEditingController();
-  var _passwordController = new TextEditingController();
+  final _pseudoController = TextEditingController();
+  final _passwordController = TextEditingController();
   late String title,
       int,
       username,
@@ -110,32 +110,32 @@ class _MyHomePageState extends State<MyHomePage> {
 
   //*********************Alert Dialog Pseudo******************************/
   void onSignedInErrorPassword() {
-    new AlertDialog(
-      title: new Text("Erro ao acessar"),
-      content: new Text(
+    AlertDialog(
+      title: Text("Erro ao acessar"),
+      content: Text(
           "Ocorreu um erro com a senha ao acessar. Favor tentar novamente."),
     );
     showDialog(
         context: context,
-        builder: (_) => new Text(
+        builder: (_) => Text(
             "Ocorreu um erro com acesso do usuário. Favor tentar novamente."));
   }
 
   //********************Alert Dialog Pseudo******************************/
   void onSignedInErrorPseudo() {
-    var alert = new AlertDialog(
-      title: new Text("Erro ao acessar"),
-      content: new Text(
+    var alert = AlertDialog(
+      title: Text("Erro ao acessar"),
+      content: Text(
           "Ocorreu um erro com acesso do usuário. Favor tentar novamente."),
     );
     showDialog(
         context: context,
-        builder: (_) => new Text(
+        builder: (_) => Text(
             "Ocorreu um erro com acesso do usuário. Favor tentar novamente."));
   }
 
   //******************* Check Data ****************************/
-  VerifData(String pseudo, String password, var data) async {
+  Future<void> VerifData(String pseudo, String password, var data) async {
     var content = Utf8Encoder().convert(password);
     var md5 = crypto.md5;
 
@@ -175,7 +175,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  saveSharedData() async {
+  Future<void> saveSharedData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     prefs.setBool('logged', true);
     prefs.setString('idUser', data['user_id'].toString());
@@ -193,7 +193,7 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  handleAfterSignIn() {
+  void handleAfterSignIn() {
     Future.delayed(const Duration(milliseconds: 500)).then((value) {
       nextScreenReplace(
         context,
@@ -266,13 +266,13 @@ class _MyHomePageState extends State<MyHomePage> {
   Row advert() {
     return Row(
       children: [
-        new Container(
+        Container(
           alignment: Alignment.bottomLeft,
           width: 40.0,
           height: 40.0,
-          decoration: new BoxDecoration(
+          decoration: BoxDecoration(
             shape: BoxShape.rectangle,
-            image: new DecorationImage(
+            image: DecorationImage(
               fit: BoxFit.fill,
               image: AssetImage(
                 'assets/images/logo.png',
@@ -297,7 +297,7 @@ class _MyHomePageState extends State<MyHomePage> {
     return Center(
       child: Stack(
         children: [
-          new Container(
+          Container(
             width: MediaQuery.of(context).size.width >
                     MediaQuery.of(context).size.height
                 ? MediaQuery.of(context).size.height / 5
@@ -316,7 +316,7 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
               shape: BoxShape.rectangle,
               borderRadius: BorderRadius.circular(6.0),
-              image: new DecorationImage(
+              image: DecorationImage(
                   fit: BoxFit.fill, image: AssetImage('assets/images/log.gif')),
             ),
           ),
@@ -326,7 +326,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
   /*******************************************************/
 
-  /****************** TextField Pseudo*******************************/
+  /// **************** TextField Pseudo******************************
   Container pseudo() {
     return Container(
       width: MediaQuery.of(context).size.width * 0.8,
@@ -401,7 +401,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   /************************************************************/
 
-  /******************** TextField Password ******************************/
+  /// ****************** TextField Password *****************************
   Container password() {
     return Container(
       width: MediaQuery.of(context).size.width * 0.8,
@@ -481,19 +481,19 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   /****************************************************/
-  /********************* Button Login****************************************/
+  /// ******************* Button Login***************************************
   Column createaccount(context) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         IconButton(
           onPressed: () {
-            var route = new MaterialPageRoute(
-              builder: (BuildContext context) => new Register(),
+            var route = MaterialPageRoute(
+              builder: (BuildContext context) => Register(),
             );
             Navigator.of(context).push(route);
           },
-          icon: new Icon(
+          icon: Icon(
             Icons.lock,
             color: Colors.grey,
             size: 24,
@@ -519,7 +519,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
 /*************************************************/
 
-/********************Button Cancel ***********************/
+/// ******************Button Cancel **********************
   ElevatedButton cancelButton() {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
@@ -529,8 +529,8 @@ class _MyHomePageState extends State<MyHomePage> {
           backgroundColor: Colors.black,
           minimumSize: Size(120, 40),
           maximumSize: Size(120, 40),
-          shape: new RoundedRectangleBorder(
-            borderRadius: new BorderRadius.circular(6.0),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6.0),
           ),
           shadowColor: Colors.grey,
           elevation: 8),
@@ -552,7 +552,7 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  /********************* Button Login****************************************/
+  /// ******************* Button Login***************************************
   ElevatedButton loginButton() {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(

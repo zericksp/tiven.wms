@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 
 class Register extends StatefulWidget {
   @override
-  _RegisterState createState() => new _RegisterState();
+  _RegisterState createState() => _RegisterState();
 }
 
 class _RegisterState extends State<Register> {
@@ -13,18 +13,18 @@ class _RegisterState extends State<Register> {
 
 
   void onCreatedAccount() {
-    var alert = new AlertDialog(
-      title: new Text('Info'),
-      content: new SingleChildScrollView(
-        child: new ListBody(
+    var alert = AlertDialog(
+      title: Text('Info'),
+      content: SingleChildScrollView(
+        child: ListBody(
           children: <Widget>[
-            new Text('Voce criou nova conta.'),
+            Text('Voce criou nova conta.'),
           ],
         ),
       ),
       actions: <Widget>[
-        new TextButton(
-          child: new Text('Ok'),
+        TextButton(
+          child: Text('Ok'),
           onPressed: () {
             Navigator.of(context).pop();
           },
@@ -32,14 +32,14 @@ class _RegisterState extends State<Register> {
       ],
     );
     showDialog(
-        context: context, builder: (_) => new Text('Voce criou nova conta.'));
+        context: context, builder: (_) => Text('Voce criou nova conta.'));
   }
 
-  var _usernameController = new TextEditingController();
-  var _firstnameController = new TextEditingController();
-  var _lastnameController = new TextEditingController();
-  var _genderController = new TextEditingController();
-  var _passwordController = new TextEditingController();
+  final _usernameController = TextEditingController();
+  final _firstnameController = TextEditingController();
+  final _lastnameController = TextEditingController();
+  final _genderController = TextEditingController();
+  final _passwordController = TextEditingController();
 
   void _addData() {
     var url = "http://www.tiven.com.br/crud/NewUser.php";
@@ -57,14 +57,14 @@ class _RegisterState extends State<Register> {
 
   @override
   Widget build(BuildContext context) {
-    return new Scaffold(
+    return Scaffold(
       appBar: AppBar(),
-      body: new Padding(
+      body: Padding(
         padding: const EdgeInsets.only(
             left: 16.0, top: 30.0, right: 16.0, bottom: 16.0),
         child: ListView(
           children: <Widget>[
-            new ListTile(
+            ListTile(
               leading: const Icon(Icons.person),
               title: TextField(
                 decoration: InputDecoration(
@@ -72,7 +72,7 @@ class _RegisterState extends State<Register> {
                 controller: _usernameController,
               ),
             ),
-            new ListTile(
+            ListTile(
               leading: const Icon(Icons.person),
               title: TextField(
                 decoration: InputDecoration(
@@ -80,7 +80,7 @@ class _RegisterState extends State<Register> {
                 controller: _firstnameController,
               ),
             ),
-            new ListTile(
+            ListTile(
               leading: const Icon(Icons.person),
               title: TextField(
                 decoration: InputDecoration(
@@ -88,7 +88,7 @@ class _RegisterState extends State<Register> {
                 controller: _genderController,
               ),
             ),
-            new ListTile(
+            ListTile(
               leading: const Icon(Icons.remove_red_eye),
               title: TextField(
                 obscureText: true,
@@ -100,11 +100,11 @@ class _RegisterState extends State<Register> {
             SizedBox(
               height: 25.0,
             ),
-            new ButtonBarTheme(
+            ButtonBarTheme(
               data: ButtonBarThemeData(buttonTextTheme: ButtonTextTheme.accent),
-              child: new ButtonBar(
+              child: ButtonBar(
                 children: <Widget>[
-                  new TextButton.icon(
+                  TextButton.icon(
                     label: Text(
                       'Voltar ',
                       textScaler: TextScaler.linear(2.0),
@@ -115,7 +115,7 @@ class _RegisterState extends State<Register> {
                       //_UpdateData(widget.idUser, _nom.text, _pseudo.text, _prenom.text, _numTel.text);
                     },
                   ),
-                  new TextButton.icon(
+                  TextButton.icon(
                     onPressed: () {
                       _addData();
                     },

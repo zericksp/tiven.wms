@@ -1,8 +1,5 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:tiven/utils/config.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SignInProvider extends ChangeNotifier {
@@ -11,7 +8,7 @@ class SignInProvider extends ChangeNotifier {
   bool get isSignedIn => _isSignedIn;
 
   //hasError, errorCode, provider,uid, email, name, imageUrl
-  bool _hasError = false;
+  final bool _hasError = false;
   bool get hasError => _hasError;
 
   String? _errorCode;

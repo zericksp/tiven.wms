@@ -751,7 +751,7 @@ class Uiitem extends StatelessWidget {
             AspectRatio(
               aspectRatio: 18.0 / 10.0,
               child: Image.network(
-                url + building.id + '.png',
+                '$url${building.id}.png',
                 fit: BoxFit.scaleDown,
               ),
             ),

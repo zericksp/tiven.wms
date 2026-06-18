@@ -51,7 +51,7 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
   String _value = "0";
   String _courier = "0";
   // String _status = "NFe";
-  bool _checkbox = false;
+  final bool _checkbox = false;
   int _qty = 0;
   late int _barcode, intNFes = 0;
   late String _usr, data;
@@ -318,16 +318,18 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
   }
 
   Future<void> clearDataPicking(
-      String $user, String $strStore, String $strCourier) async {
+      String user, String strStore, String strCourier) async {
     http.Client client = http.Client();
     String strparam = 'https://www.tiven.com.br/picking/del_picking.php';
     //strparam = '127.0.0.1/tiven/picking/siteED.php';
-    strparam += '?user=' + $user;
+    strparam += "?user=$user";
     strparam += '&isu_status=true';
-    // strparam += '&store=' + $strStore;
-    // strparam += '&courier=' + $strCourier;
+    strparam += "&store=' strStore";
+    strparam += "&courier='  strCourier";
     final response = await client.get(Uri.parse(strparam));
-    print(response.body);
+    if (kDebugMode) {
+      print(response.body);
+    }
   }
 
   Future<void> _onRefresh() {
@@ -342,10 +344,13 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
   Future<void> scanBarcodeNormal() async {
     // ignore: unused_local_variable
     try {
-      barcodeScanRes = await FlutterBarcodeScanner.scanBarcode(
+      final result = await FlutterBarcodeScanner.scanBarcode(
           "#ff6666", "Cancelar", true, ScanMode.BARCODE);
-      _barcode = int.parse(barcodeScanRes);
-    } on PlatformException {
+      if (result.isNotEmpty && result != '-1') {
+        barcodeScanRes = result;
+        _barcode = int.parse(barcodeScanRes);
+      }
+    } catch (e) {
       barcodeScanRes = 'Falha ao verificar versão da plataforma.';
     }
   }
@@ -353,9 +358,12 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
   Future<void> scanBarcodeNfe() async {
     // ignore: unused_local_variable
     try {
-      barcodeScanRes = await FlutterBarcodeScanner.scanBarcode(
+      final result = await FlutterBarcodeScanner.scanBarcode(
           "#ff6666", "Cancelar", true, ScanMode.BARCODE);
-    } on PlatformException {
+      if (result.isNotEmpty && result != '-1') {
+        barcodeScanRes = result;
+      }
+    } catch (e) {
       barcodeScanRes = 'Falha ao verificar versão da plataforma.';
     }
   }
@@ -623,7 +631,7 @@ class _PhotosListState extends State<PhotosList> {
   String usr;
   late bool saved;
 
-  get child => null;
+  Null get child => null;
   final String _url = "https://www.tiven.com.br/crud/images/";
   String _sku = "";
   var data;
@@ -1006,19 +1014,21 @@ class _PhotosListState extends State<PhotosList> {
 
   // Platform messages are asynchronous, so we initialize in an async method.
   Future<void> scanBarcodeLocation(sku) async {
-    String locationScanRes;
-    // Platform messages may fail, so we use a try/catch PlatformException.
+    String locationScanRes = '';
+    // Platform messages may fail, so we use a try/catch for all exceptions.
     try {
       locationScanRes = await FlutterBarcodeScanner.scanBarcode(
           "#ff6666", "Cancelar", true, ScanMode.BARCODE);
-      String value = locationScanRes;
-      bool chkadd = _checkAddress(value);
+      if (locationScanRes.isNotEmpty && locationScanRes != '-1') {
+        String value = locationScanRes;
+        bool chkadd = _checkAddress(value);
 
-      if (chkadd == true) {
-        updateLocation(sku, value.toString());
-        //print(locationScanRes);
+        if (chkadd == true) {
+          updateLocation(sku, value.toString());
+          //print(locationScanRes);
+        }
       }
-    } on PlatformException {
+    } catch (e) {
       locationScanRes = 'Falha ao verificar versão da plataforma.';
     }
     // If the widget was removed from the tree while the asynchronous platform
@@ -1109,54 +1119,56 @@ class _PhotosListState extends State<PhotosList> {
   }
 
   Future<void> scanBarcodeNormal(int idx) async {
-    String barcodeScanRes;
+    String barcodeScanRes = '';
     int intCaptured = 1;
-    // Platform messages may fail, so we use a try/catch PlatformException.
+    // Platform messages may fail, so we use a try/catch for all exceptions.
     try {
       // scan barrcode from external source
       barcodeScanRes = await FlutterBarcodeScanner.scanBarcode(
           "#ff6666", "Cancelar", true, ScanMode.BARCODE);
 
-      // check for DUN14
-      if (barcodeScanRes.length == 14) {
-        intCaptured = showInt(int.parse(barcodeScanRes.substring(0, 1)));
-        barcodeScanRes = barcodeScanRes.substring(1, 13);
-      }
+      if (barcodeScanRes.isNotEmpty && barcodeScanRes != '-1') {
+        // check for DUN14
+        if (barcodeScanRes.length == 14) {
+          intCaptured = showInt(int.parse(barcodeScanRes.substring(0, 1)));
+          barcodeScanRes = barcodeScanRes.substring(1, 13);
+        }
 
-      // check if scanner captured valid code found
-      if (barcodeScanRes.toString() == widget.photos[idx].ean.toString() ||
-          barcodeScanRes.toString() == widget.photos[idx].sku.toString()) {
-        if (intCaptured <=
-            (int.parse(widget.photos[idx].qty) -
-                    int.parse(widget.photos[idx].captured)) +
-                1) {
+        // check if scanner captured valid code found
+        if (barcodeScanRes.toString() == widget.photos[idx].ean.toString() ||
+            barcodeScanRes.toString() == widget.photos[idx].sku.toString()) {
+          if (intCaptured <=
+              (int.parse(widget.photos[idx].qty) -
+                      int.parse(widget.photos[idx].captured)) +
+                  1) {
+            setState(
+              () {
+                widget.photos[idx].captured =
+                    (int.parse(widget.photos[idx].captured) + intCaptured)
+                        .toString();
+                setQty(
+                    http.Client(),
+                    widget.photos[idx].sku,
+                    widget.photos[idx].ean,
+                    widget.photos[idx].title,
+                    widget.photos[idx].address,
+                    '1');
+              },
+            );
+          }
+        }
+        if (kDebugMode) {
+          print(barcodeScanRes);
+        }
+        if (widget.photos[idx].captured == widget.photos[idx].qty) {
           setState(
             () {
-              widget.photos[idx].captured =
-                  (int.parse(widget.photos[idx].captured) + intCaptured)
-                      .toString();
-              setQty(
-                  http.Client(),
-                  widget.photos[idx].sku,
-                  widget.photos[idx].ean,
-                  widget.photos[idx].title,
-                  widget.photos[idx].address,
-                  '1');
+              widget.photos.removeAt(idx);
             },
           );
         }
       }
-      if (kDebugMode) {
-        print(barcodeScanRes);
-      }
-      if (widget.photos[idx].captured == widget.photos[idx].qty) {
-        setState(
-          () {
-            widget.photos.removeAt(idx);
-          },
-        );
-      }
-    } on PlatformException {
+    } catch (e) {
       barcodeScanRes = 'Falha ao verificar versão da plataforma.';
     }
 
@@ -1171,9 +1183,7 @@ class _PhotosListState extends State<PhotosList> {
               " - " +
               widget.photos[idx].title.toString() +
               ' capturados'
-          : 'Todos ' +
-              widget.photos[idx].title.toString() +
-              ' foram capturados'),
+          : 'Todos ${widget.photos[idx].title} foram capturados'),
       action: SnackBarAction(
         textColor: widget.photos[idx].qty == widget.photos[idx].captured
             ? Colors.black
@@ -1538,7 +1548,7 @@ class _PhotosListState extends State<PhotosList> {
     );
   }
 
-  snacksaved() {}
+  void snacksaved() {}
 
   bool isNumeric(String s) {
     return double.tryParse(s) != null;

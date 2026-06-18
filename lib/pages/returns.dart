@@ -52,7 +52,7 @@ class _ReturnsState extends State<Returns> {
   int _estAtual = 0;
   int _qrcode = 0;
   int _barcode = 0;
-  int _scanQRcode = 0;
+  final int _scanQRcode = 0;
   String qrcodeScanRes = '';
   String _newlocation = '';
   String _scanLocation = '';
@@ -70,7 +70,7 @@ class _ReturnsState extends State<Returns> {
   String _location = '';
   int _quant = 0;
 
-  _printLatestValue() {
+  void _printLatestValue() {
     if (kDebugMode) {
       print("Second text f");
     }
@@ -86,14 +86,14 @@ class _ReturnsState extends State<Returns> {
   }
 
   //Loading qrcode value on start
-  _loadQrcode() async {
+  Future<void> _loadQrcode() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
       _qrcode = (prefs.getInt('qrcode') ?? 0);
     });
   }
 
-  startBarcodeScanStream() async {
+  Future<void> startBarcodeScanStream() async {
     FlutterBarcodeScanner.getBarcodeStreamReceiver(
             "#ff6666", "Cancel", true, ScanMode.BARCODE)
         ?.listen((barcode) => print(barcode));
@@ -142,13 +142,13 @@ class _ReturnsState extends State<Returns> {
   static final String uploadEndPoint =
       'http://localhost/flutter_test/upload_image.php';
 
-  setStatus(String message) {
+  void setStatus(String message) {
     setState(() {
       status = message;
     });
   }
 
-  startUpload(imageObj, imageIssue) {
+  void startUpload(imageObj, imageIssue) {
     setStatus('Uploading Image...');
     if (null == imageObj || null == imageIssue) {
       setStatus(errMessage);
@@ -158,7 +158,7 @@ class _ReturnsState extends State<Returns> {
     upload();
   }
 
-  uploadAll(String fileName, String base64Image) {
+  void uploadAll(String fileName, String base64Image) {
     String uploadEndPoint =
         //'http://127.0.0.1/tiven/inventory/saveData.php';
         'https://www.tiven.com.br/inventory/saveData.php';
@@ -242,7 +242,7 @@ class _ReturnsState extends State<Returns> {
     }
   }
 
-  incrementQrcode() async {
+  Future<void> incrementQrcode() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(
       () {
@@ -545,7 +545,7 @@ class _ReturnsState extends State<Returns> {
             _bcode &&
                     _imageIssuePath.length >= 10 &&
                     _imageObjPath.length >= 10 &&
-                    _defects.length > 0
+                    _defects.isNotEmpty
                 ? Column(
                     children: [
                       ElevatedButton(
@@ -1015,9 +1015,11 @@ class _ReturnsState extends State<Returns> {
       while (_barcode < 1) {
         String barcodeScanRes = await FlutterBarcodeScanner.scanBarcode(
             "#ff6666", "Cancelar", true, ScanMode.BARCODE);
-        _barcode = int.parse(barcodeScanRes);
+        if (barcodeScanRes.isNotEmpty && barcodeScanRes != '-1') {
+          _barcode = int.parse(barcodeScanRes);
+        }
       }
-    } on PlatformException {
+    } catch (e) {
       barcodeScanRes = 'Falha ao verificar versão da plataforma.';
     }
     return _barcode;
@@ -1469,17 +1471,19 @@ class _ReturnsState extends State<Returns> {
   }
 
   Future<void> scanBarcodeLocation() async {
-    String locationScanRes;
-    // Platform messages may fail, so we use a try/catch PlatformException.
+    String locationScanRes = '';
+    // Platform messages may fail, so we use a try/catch for all exceptions.
     try {
       locationScanRes = await FlutterBarcodeScanner.scanBarcode(
           "#ff6666", "Cancelar", true, ScanMode.BARCODE);
-      _newlocation = (locationScanRes).toString();
-      //updateLocation((locationScanRes).toString());
-      if (kDebugMode) {
-        print(locationScanRes);
+      if (locationScanRes.isNotEmpty && locationScanRes != '-1') {
+        _newlocation = (locationScanRes).toString();
+        //updateLocation((locationScanRes).toString());
+        if (kDebugMode) {
+          print(locationScanRes);
+        }
       }
-    } on PlatformException {
+    } catch (e) {
       locationScanRes = 'Falha ao verificar versão da plataforma.';
     }
 
@@ -1548,7 +1552,7 @@ class _ReturnsState extends State<Returns> {
             padding: const EdgeInsets.fromLTRB(20, 1, 20, 10),
             child: Center(
               child: Text(
-                '$_newlocation',
+                _newlocation,
                 style: TextStyle(
                   color: Colors.orange,
                   fontSize: 30,

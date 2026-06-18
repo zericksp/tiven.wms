@@ -59,8 +59,8 @@ class _MyHomePageState extends State<MyHomePage> {
   int _qrcode = 0;
   String _barcode = "";
   var data;
-  List<UserDetails> _searchResult = [];
-  List<UserDetails> _userDetails = [];
+  final List<UserDetails> _searchResult = [];
+  final List<UserDetails> _userDetails = [];
   TextEditingController scanController = TextEditingController();
   late FocusNode myFocusNode;
 
@@ -83,7 +83,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   //Loading qrcode value on start
-  _loadQrcode() async {
+  Future<void> _loadQrcode() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
       _qrcode = (prefs.getInt('qrcode') ?? 0);
@@ -99,10 +99,10 @@ class _MyHomePageState extends State<MyHomePage> {
   late String barcodeScanRes = "";
   late String qrcodeScanRes = "";
   late String _scanBarcode = "";
-  late int _scanQRcode = 0;
+  late final int _scanQRcode = 0;
   String _sku = "";
   String _imagePath = 'https://www.tiven.com.br/crud/images/cover.jpg';
-  String _imageError = 'https://www.tiven.com.br/crud/images/nopicture.png';
+  final String _imageError = 'https://www.tiven.com.br/crud/images/nopicture.png';
   static final orgColor = Colors.black;
   var currentColor = orgColor;
   late String curDate = DateFormat('dd/MM/yyyy').format(DateTime.now());
@@ -124,7 +124,7 @@ class _MyHomePageState extends State<MyHomePage> {
   bool isLoading = true;
 
   //Incrementing qrcode after click
-  incrementQrcode() async {
+  Future<void> incrementQrcode() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(
       () {
@@ -183,7 +183,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> insDailyProd(
-      BuildContext context, _sku, _title, _barcode) async {
+      BuildContext context, sku, title, barcode) async {
     MySqlConnection? conn;
     int qty = 1;
     try {
@@ -195,7 +195,7 @@ class _MyHomePageState extends State<MyHomePage> {
       VALUES (?, ?, ?, ?)
     ''';
 
-      await conn.query(query, [_sku, _title, qty, _barcode]);
+      await conn.query(query, [sku, title, qty, barcode]);
 
       // Exibir Snackbar de sucesso (Laranja)
       showSnackbar(context, "Produto inserido com sucesso!", Colors.orange);
@@ -267,17 +267,24 @@ class _MyHomePageState extends State<MyHomePage> {
 
 // Platform messages are asynchronous, so we initialize in an async method.
   Future<void> scanBarcodeNormal() async {
-    barcodeScanRes = await FlutterBarcodeScanner.scanBarcode(
-        "#ff6666", "Cancelar", true, ScanMode.BARCODE);
-    _scanBarcode = barcodeScanRes;
-    barcodeTreatment();
+    try {
+      final result = await FlutterBarcodeScanner.scanBarcode(
+          "#ff6666", "Cancelar", true, ScanMode.BARCODE);
+      if (result.isNotEmpty && result != '-1') {
+        barcodeScanRes = result;
+        _scanBarcode = barcodeScanRes;
+        barcodeTreatment();
+      }
+    } catch (e) {
+      barcodeScanRes = 'Falha ao verificar versão da plataforma.';
+    }
   }
 
-  Future<void> fetchProductBySKU(String _barcode) async {
+  Future<void> fetchProductBySKU(String barcode) async {
     const String apiUrl = "https://www.bling.com.br/Api/v3/produtos";
     String token = await getToken(clientId);
 
-    final Uri uri = Uri.parse("$apiUrl?codigo=$_barcode");
+    final Uri uri = Uri.parse("$apiUrl?codigo=$barcode");
 
     final response = await http.get(
       uri,
@@ -290,7 +297,7 @@ class _MyHomePageState extends State<MyHomePage> {
     if (response.statusCode == 200) {
       final Map<String, dynamic> data = jsonDecode(response.body);
       _title = data['data'][0]['nome'].toString();
-      _barcode = "";
+      barcode = "";
       _sku = data['data'][0]['prd_codigo'].toString();
       _location = "N/A";
       _location2 = "N/A";
@@ -301,13 +308,13 @@ class _MyHomePageState extends State<MyHomePage> {
     } else {
       setState(() {
         _title = '';
-        _barcode = '';
+        barcode = '';
         _sku = '';
         _location = "";
         _location2 = "";
         _location3 = "";
         _imagePath = 'http://www.tiven.com.br/crud/images/notregistered.png';
-        print(_barcode);
+        print(barcode);
       });
     }
   }
@@ -370,10 +377,10 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  Future getProd(String _code) async {
+  Future getProd(String code) async {
     var response = await http.get(
         Uri.parse(
-            "https://www.tiven.com.br/crud/getProductByCode.php?CODE=$_code"),
+            "https://www.tiven.com.br/crud/getProductByCode.php?CODE=$code"),
         headers: {"Accept": "application/json"});
     // print(_code);
     if (response.contentLength! >= 100) {
@@ -392,22 +399,24 @@ class _MyHomePageState extends State<MyHomePage> {
         _sku = '';
         _location = "";
         _imagePath = 'http://www.tiven.com.br/crud/images/notregistered.png';
-        print(_code);
+        print(code);
       });
     }
   }
 
-  onSearchTextChanged(String text) async {
+  Future<void> onSearchTextChanged(String text) async {
     _searchResult.clear();
     if (text.isEmpty) {
       setState(() {});
       return;
     }
 
-    _userDetails.forEach((userDetail) {
+    for (var userDetail in _userDetails) {
       if (userDetail.firstName.contains(text) ||
-          userDetail.lastName.contains(text)) _searchResult.add(userDetail);
-    });
+          userDetail.lastName.contains(text)) {
+        _searchResult.add(userDetail);
+      }
+    }
 
     setState(() {});
   }
@@ -524,7 +533,7 @@ class _MyHomePageState extends State<MyHomePage> {
               _picture(context, data),
               Divider(color: Colors.grey.withValues(alpha: 0.5)),
               Text(
-                '$_title',
+                _title,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     inherit: true,
@@ -634,7 +643,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 color: Colors.black,
                 alignment: Alignment.center,
                 child: Text(
-                  '$_barcode',
+                  _barcode,
                   style: TextStyle(
                     inherit: true,
                     fontSize: 15.0,
@@ -735,7 +744,7 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             ),
             progressIndicatorBuilder:
-                (context, _imageError, downloadProgress) =>
+                (context, imageError, downloadProgress) =>
                     CircularProgressIndicator(value: downloadProgress.progress),
             errorWidget: (context, url, error) => CircleAvatar(
               backgroundColor: Colors.red,
@@ -748,7 +757,7 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
           ),
         ),
-        !_sku.isEmpty
+        _sku.isNotEmpty
             ? Container(
                 margin: const EdgeInsets.all(3.0),
                 padding: const EdgeInsets.all(3.0),
@@ -760,7 +769,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
                 // ignore: unnecessary_null_comparison
                 child: Text(
-                  _sku.toString() + "\n" + _location.toString(),
+                  "$_sku\n$_location",
                   textAlign: TextAlign.center,
                   style: TextStyle(
                       color: Colors.black,

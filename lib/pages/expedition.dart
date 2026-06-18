@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_barcode_scanner_plus/flutter_barcode_scanner_plus.dart';
 import 'package:http/http.dart' as http;
-import 'package:strings/strings.dart';
 import 'package:tiven/pages/items.dart';
 
 class Expedition extends StatefulWidget {
@@ -85,7 +84,7 @@ class ExpeditionPage extends StatefulWidget {
 }
 
 class _ExpeditionPageState extends State<ExpeditionPage> {
-  String _value = "0";
+  final String _value = "0";
   int _qty = 0;
   late String title, _usr;
   final String usr, nOrder, store, nStore, market, idxOrder;
@@ -157,7 +156,7 @@ class _ExpeditionPageState extends State<ExpeditionPage> {
 
   Future<void> _onRefresh() {
     Completer<Null> completer = Completer<Null>();
-    Timer timer = Timer(Duration(seconds: 2), () {
+    Timer(Duration(seconds: 2), () {
       completer.complete();
     });
     _qty = _qty;
@@ -167,7 +166,7 @@ class _ExpeditionPageState extends State<ExpeditionPage> {
 
 class PhotosList extends StatefulWidget {
   final List<NFe> nfe;
-  String user, nOrder, nStore;
+  final String user, nOrder, nStore;
 
   PhotosList(
       {Key? key,
@@ -195,17 +194,10 @@ class _PhotosListState extends State<PhotosList> {
   String usr;
   late bool saved;
 
-  get child => null;
+  Null get child => null;
   final String _url = "https://www.tiven.com.br/crud/images/";
-  String _scanBarcode = 'Desconhecido';
-  String _title = "";
-  int _barcode = 0;
   String _sku = "";
   int captured = 0;
-  int _quant = 0;
-  int _quant2 = 0;
-  int _quant3 = 0;
-  int _quantot = 0;
   var data;
 
   @override
@@ -400,48 +392,50 @@ class _PhotosListState extends State<PhotosList> {
   }
 
   Future<void> scanBarcodeNormal(int idx) async {
-    String barcodeScanRes;
-    int _intCaptured = 1;
-    // Platform messages may fail, so we use a try/catch PlatformException.
+    String barcodeScanRes = '';
+    int intCaptured = 1;
+    // Platform messages may fail, so we use a try/catch for all exceptions.
     try {
       // scan barrcode from external source
       barcodeScanRes = await FlutterBarcodeScanner.scanBarcode(
           "#ff6666", "Cancelar", true, ScanMode.BARCODE);
 
-      // check if scanner captured valid code found
-      if (barcodeScanRes.toString() == widget.nfe[idx].ean.toString() ||
-          barcodeScanRes.toString() == widget.nfe[idx].sku.toString()) {
-        if (_intCaptured <=
-            (int.parse(widget.nfe[idx].qty) -
-                    int.parse(widget.nfe[idx].captured)) +
-                1) {
-          setState(
-            () {
-              widget.nfe[idx].captured =
-                  (int.parse(widget.nfe[idx].captured) + _intCaptured)
-                      .toString();
-              //       setQty(
-              //           http.Client(),
-              //           widget.nfe[idx].sku,
-              //           widget.nfe[idx].ean,
-              //           widget.nfe[idx].title,
-              //           widget.nfe[idx].address,
-              //           '1');
-            },
-          );
+      if (barcodeScanRes.isNotEmpty && barcodeScanRes != '-1') {
+        // check if scanner captured valid code found
+        if (barcodeScanRes.toString() == widget.nfe[idx].ean.toString() ||
+            barcodeScanRes.toString() == widget.nfe[idx].sku.toString()) {
+          if (intCaptured <=
+              (int.parse(widget.nfe[idx].qty) -
+                      int.parse(widget.nfe[idx].captured)) +
+                  1) {
+            setState(
+              () {
+                widget.nfe[idx].captured =
+                    (int.parse(widget.nfe[idx].captured) + intCaptured)
+                        .toString();
+                //       setQty(
+                //           http.Client(),
+                //           widget.nfe[idx].sku,
+                //           widget.nfe[idx].ean,
+                //           widget.nfe[idx].title,
+                //           widget.nfe[idx].address,
+                //           '1');
+              },
+            );
+          }
+        }
+        print(barcodeScanRes);
+        if (widget.nfe[idx].captured == widget.nfe[idx].qty) {
+          setState(() {
+            widget.nfe.removeAt(idx);
+            if (widget.nfe.length == 0) {
+              setPicked(http.Client(), usr, nOrder, nStore, '1');
+              Navigator.pop(context);
+            }
+          });
         }
       }
-      print(barcodeScanRes);
-      if (widget.nfe[idx].captured == widget.nfe[idx].qty) {
-        setState(() {
-          widget.nfe.removeAt(idx);
-          if (widget.nfe.length == 0) {
-            setPicked(http.Client(), usr, nOrder, nStore, '1');
-            Navigator.pop(context);
-          }
-        });
-      }
-    } on PlatformException {
+    } catch (e) {
       barcodeScanRes = 'Falha ao verificar versão da plataforma.';
     }
 
@@ -459,7 +453,7 @@ class _PhotosListState extends State<PhotosList> {
               " - " +
               widget.nfe[idx].title.toString() +
               ' capturados'
-          : 'Todos ' + widget.nfe[idx].title.toString() + ' foram capturados'),
+          : 'Todos ${widget.nfe[idx].title} foram capturados'),
       action: SnackBarAction(
         textColor:
             double.parse(widget.nfe[idx].qty) == 0 //widget.nfe[idx].captured
@@ -557,14 +551,14 @@ class _PhotosListState extends State<PhotosList> {
     );
   }
 
-  snacksaved() {
+  void snacksaved() {
     final snackbar = SnackBar(
       backgroundColor: saved
           ? Colors.blueAccent[300]
           : Colors.redAccent.withValues(alpha: 0.9),
       content: saved
-          ? Text("Ocorrência com " + _sku + " registrada com sucesso!")
-          : Text("Ocorrência com " + _sku + " não registrada!"),
+          ? Text("Ocorrência com $_sku registrada com sucesso!")
+          : Text("Ocorrência com $_sku não registrada!"),
       action: SnackBarAction(
         textColor: saved ? Colors.black : Colors.white,
         label: 'Fechar',
@@ -574,12 +568,10 @@ class _PhotosListState extends State<PhotosList> {
       ),
       duration: Duration(seconds: 3),
     );
+    ScaffoldMessenger.of(context).showSnackBar(snackbar);
   }
 
   bool isNumeric(String s) {
-    if (s == null) {
-      return false;
-    }
     return double.tryParse(s) != null;
   }
 

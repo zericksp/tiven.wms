@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:auto_size_text/auto_size_text.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_barcode_scanner_plus/flutter_barcode_scanner_plus.dart';
@@ -70,7 +71,7 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: new AppBar(
+      appBar: AppBar(
         backgroundColor: Color.fromARGB(255, 0, 0, 0),
         toolbarHeight: 50,
         leading: Padding(
@@ -86,7 +87,7 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
           ),
         ),
         leadingWidth: 30,
-        title: new Row(
+        title: Row(
           children: <Widget>[
             Container(
               width: 100,
@@ -94,10 +95,10 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
               decoration: BoxDecoration(
                 color: Color.fromARGB(255, 0, 0, 0),
                 borderRadius: BorderRadius.circular(6),
-                border: new Border.all(
+                border: Border.all(
                     width: 1.0, color: Colors.white.withValues(alpha: 0.1)),
               ),
-              child: new DropdownButtonHideUnderline(
+              child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                     onChanged: (String? value) {
                       setState(
@@ -112,10 +113,10 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
                     value: _value,
                     items: <DropdownMenuItem<String>>[
                       // Geral
-                      new DropdownMenuItem(
+                      DropdownMenuItem(
                         child: Padding(
                           padding: const EdgeInsets.all(2.0),
-                          child: new Text(
+                          child: Text(
                             'Loja',
                             style: TextStyle(
                               fontWeight: FontWeight.w500,
@@ -128,9 +129,9 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
                       ),
 
                       // Vip Capas
-                      new DropdownMenuItem(
+                      DropdownMenuItem(
                           child: Container(
-                            child: new Text(
+                            child: Text(
                               'Vip Capas',
                               style: TextStyle(
                                   fontWeight: FontWeight.w400,
@@ -142,8 +143,8 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
                           value: 'VIP CAPAS'),
                       // ********  Eladecora  ********
                       // Eladecora
-                      new DropdownMenuItem(
-                        child: new Text(
+                      DropdownMenuItem(
+                        child: Text(
                           'Eladecora',
                           style: TextStyle(
                               fontWeight: FontWeight.w400,
@@ -162,10 +163,10 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
               decoration: BoxDecoration(
                 color: Color.fromARGB(255, 0, 0, 0),
                 borderRadius: BorderRadius.circular(6),
-                border: new Border.all(
+                border: Border.all(
                     width: 1.0, color: Colors.white.withValues(alpha: 0.1)),
               ),
-              child: new DropdownButtonHideUnderline(
+              child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   onChanged: (String? value) {
                     setState(
@@ -181,8 +182,8 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
                   value: _courier,
                   items: <DropdownMenuItem<String>>[
                     // Geral
-                    new DropdownMenuItem(
-                      child: new Text(
+                    DropdownMenuItem(
+                      child: Text(
                         'Transportadora ',
                         style: TextStyle(
                           fontWeight: FontWeight.w500,
@@ -194,8 +195,8 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
                     ),
                     // ********  Eladecora  ********
                     // Site
-                    new DropdownMenuItem(
-                      child: new Text(
+                    DropdownMenuItem(
+                      child: Text(
                         'Retira Loja',
                         style: TextStyle(
                             fontWeight: FontWeight.w500,
@@ -206,8 +207,8 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
                     ),
 
                     // Loggi
-                    new DropdownMenuItem(
-                      child: new Text(
+                    DropdownMenuItem(
+                      child: Text(
                         'Loggi',
                         style: TextStyle(
                             fontWeight: FontWeight.w400,
@@ -218,8 +219,8 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
                     ),
 
                     //
-                    new DropdownMenuItem(
-                      child: new Text(
+                    DropdownMenuItem(
+                      child: Text(
                         'Mandae',
                         style: TextStyle(
                             fontWeight: FontWeight.w400,
@@ -228,8 +229,8 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
                       ),
                       value: 'Mandae',
                     ),
-                    new DropdownMenuItem(
-                      child: new Text(
+                    DropdownMenuItem(
+                      child: Text(
                         'Total',
                         style: TextStyle(
                             fontWeight: FontWeight.w400,
@@ -238,8 +239,8 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
                       ),
                       value: 'TEX COURIER S.A',
                     ),
-                    new DropdownMenuItem(
-                      child: new Text(
+                    DropdownMenuItem(
+                      child: Text(
                         'Correios',
                         style: TextStyle(
                             fontWeight: FontWeight.w400,
@@ -256,7 +257,7 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
           ],
         ),
         actions: <Widget>[
-          new Container(
+          Container(
             width: 120,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(2, 2, 2, 2),
@@ -264,7 +265,7 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
                 children: <Widget>[
                   //Text("NFe"),
                   IconButton(
-                    icon: new Icon(Icons.download_sharp),
+                    icon: Icon(Icons.download_sharp),
                     highlightColor: Colors.pink,
                     onPressed: () {
                       showDialogKey();
@@ -275,7 +276,7 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
                   ),
                   // Text("Limpar"),
                   IconButton(
-                    icon: new Icon(Icons.delete_forever),
+                    icon: Icon(Icons.delete_forever),
                     highlightColor: Colors.pink,
                     onPressed: () {
                       showDialogClear();
@@ -288,7 +289,7 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
         ],
       ),
       body: blFetch
-          ? new RefreshIndicator(
+          ? RefreshIndicator(
               child: FutureBuilder<List<Photo>>(
                 future: fetchVwEdItems(
                     idUser, _checkbox, _value.toString(), _courier.toString()),
@@ -317,21 +318,23 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
   }
 
   Future<void> clearDataPicking(
-      String $user, String $strStore, String $strCourier) async {
+      String user, String strStore, String strCourier) async {
     http.Client client = http.Client();
     String strparam = 'https://www.tiven.com.br/picking/del_picking.php';
     //strparam = '127.0.0.1/tiven/picking/siteED.php';
-    strparam += '?user=' + $user;
+    strparam += "?user=$user";
     strparam += '&isu_status=true';
     // strparam += '&store=' + $strStore;
     // strparam += '&courier=' + $strCourier;
     final response = await client.get(Uri.parse(strparam));
-    print(response.body);
+    if (kDebugMode) {
+      print(response.body);
+    }
   }
 
   Future<void> _onRefresh() {
-    Completer<Null> completer = new Completer<Null>();
-    Timer(new Duration(seconds: 2), () {
+    Completer<Null> completer = Completer<Null>();
+    Timer(Duration(seconds: 2), () {
       completer.complete();
     });
     _qty = _qty;
@@ -341,10 +344,13 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
   Future<void> scanBarcodeNormal() async {
     // ignore: unused_local_variable
     try {
-      barcodeScanRes = await FlutterBarcodeScanner.scanBarcode(
+      final result = await FlutterBarcodeScanner.scanBarcode(
           "#ff6666", "Cancelar", true, ScanMode.BARCODE);
-      _barcode = int.parse(barcodeScanRes);
-    } on PlatformException {
+      if (result.isNotEmpty && result != '-1') {
+        barcodeScanRes = result;
+        _barcode = int.parse(barcodeScanRes);
+      }
+    } catch (e) {
       barcodeScanRes = 'Falha ao verificar versão da plataforma.';
     }
   }
@@ -352,17 +358,20 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
   Future<void> scanBarcodeNfe() async {
     // ignore: unused_local_variable
     try {
-      barcodeScanRes = await FlutterBarcodeScanner.scanBarcode(
+      final result = await FlutterBarcodeScanner.scanBarcode(
           "#ff6666", "Cancelar", true, ScanMode.BARCODE);
-    } on PlatformException {
+      if (result.isNotEmpty && result != '-1') {
+        barcodeScanRes = result;
+      }
+    } catch (e) {
       barcodeScanRes = 'Falha ao verificar versão da plataforma.';
     }
   }
 
-  Future getAccessKey(_KeyNfe) async {
+  Future getAccessKey(KeyNfe) async {
     var response = await http.get(
         // Uri.parse("http://localhost/crud/getNfeByKey.php?keynfe=43210490406117000162550000001151321942649269&idUser=13"),headers: {"Accept": "application/json"});
-        Uri.parse("http://www.tiven.com.br/picking/InsPickingByNfeKey.php?keynfe=$_KeyNfe&idUser=$idUser"),
+        Uri.parse("http://www.tiven.com.br/picking/InsPickingByNfeKey.php?keynfe=$KeyNfe&idUser=$idUser"),
         headers: {"Accept": "application/json"});
     print(_barcode);
     if (response.contentLength! >= 100) {
@@ -388,13 +397,13 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
           elevation: 8,
           title: Row(
             children: [
-              new Text(
+              Text(
                 'Nota Fiscal Eletrônica',
                 style: TextStyle(fontSize: 18),
               ),
             ],
           ),
-          content: new TextField(
+          content: TextField(
             controller: myKeyController,
             maxLines: 4,
             onTap: () {
@@ -410,18 +419,18 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
             },
             focusNode: mykeyfocusNode,
             autofocus: true,
-            decoration: new InputDecoration(
-              border: new OutlineInputBorder(
-                borderSide: new BorderSide(color: Colors.black),
+            decoration: InputDecoration(
+              border: OutlineInputBorder(
+                borderSide: BorderSide(color: Colors.black),
               ),
-              enabledBorder: new OutlineInputBorder(
-                borderSide: new BorderSide(color: Colors.red),
+              enabledBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: Colors.red),
               ),
-              disabledBorder: new OutlineInputBorder(
-                borderSide: new BorderSide(color: Colors.grey),
+              disabledBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: Colors.grey),
               ),
-              focusedBorder: new OutlineInputBorder(
-                borderSide: new BorderSide(color: Colors.grey),
+              focusedBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: Colors.grey),
               ),
               hintText: 'Chave /Número NFe',
               helperText: 'Notas adicionadas: $intNFes',
@@ -465,7 +474,7 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
             ], // Only numbers can be entered
           ),
           actions: <Widget>[
-            new TextButton(
+            TextButton(
                 style: ButtonStyle(
                   foregroundColor: WidgetStateProperty.all<Color>(Colors.black),
                   backgroundColor: WidgetStateProperty.all<Color>(Colors.black),
@@ -484,7 +493,7 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
                         2.0),
                   ),
                 ),
-                child: new Text(
+                child: Text(
                   "Fechar",
                   style: TextStyle(color: Colors.white),
                 ),
@@ -519,7 +528,7 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
             },
           ),
           actions: <Widget>[
-            new TextButton(
+            TextButton(
                 style: ButtonStyle(
                   foregroundColor: WidgetStateProperty.all<Color>(Colors.grey),
                   backgroundColor: WidgetStateProperty.all<Color>(Colors.white),
@@ -538,7 +547,7 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
                         2.0),
                   ),
                 ),
-                child: new Text(
+                child: Text(
                   "Sim",
                   style: TextStyle(color: Colors.black),
                 ),
@@ -548,7 +557,7 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
                     Navigator.of(context).pop();
                   });
                 }),
-            new TextButton(
+            TextButton(
                 style: ButtonStyle(
                   foregroundColor: WidgetStateProperty.all<Color>(Colors.grey),
                   backgroundColor: WidgetStateProperty.all<Color>(Colors.white),
@@ -567,7 +576,7 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
                         2.0),
                   ),
                 ),
-                child: new Text(
+                child: Text(
                   "Não",
                   style: TextStyle(color: Colors.black),
                 ),
@@ -589,7 +598,7 @@ class _Picking_NfePageState extends State<Picking_NfePage> {
         Uri.parse(
             "http://www.tiven.com.br/crud/delInvoices.php?idUser=$idUser"),
         headers: {"Accept": "application/json"});
-    await new Future.delayed(const Duration(seconds: 5));
+    await Future.delayed(const Duration(seconds: 5));
     setState(() {
       if (response.contentLength! >= 20) {
         clearFields();
@@ -621,7 +630,7 @@ class _PhotosListState extends State<PhotosList> {
 
   String usr;
 
-  get child => null;
+  Null get child => null;
   final String _url = "https://www.tiven.com.br/crud/images/";
   final String _scanBarcode = 'Desconhecido';
   String _title = "";
@@ -641,7 +650,7 @@ class _PhotosListState extends State<PhotosList> {
 
   @override
   Widget build(BuildContext context) {
-    return new ListView.builder(
+    return ListView.builder(
       itemCount: widget.photos.length <= 0 ? 0 : widget.photos.length,
       itemBuilder: (context, index) {
         return Column(
@@ -719,7 +728,7 @@ class _PhotosListState extends State<PhotosList> {
                                 flex: 5,
                                 child: Padding(
                                   padding: const EdgeInsets.all(0.0),
-                                  child: new ElevatedButton(
+                                  child: ElevatedButton(
                                     style: ElevatedButton.styleFrom(
                                       foregroundColor:
                                           Color.fromARGB(221, 0, 0, 0),
@@ -729,9 +738,9 @@ class _PhotosListState extends State<PhotosList> {
                                       minimumSize: Size(88, 36),
                                       padding:
                                           EdgeInsets.symmetric(horizontal: 2),
-                                      shape: new RoundedRectangleBorder(
+                                      shape: RoundedRectangleBorder(
                                         borderRadius:
-                                            new BorderRadius.circular(3.0),
+                                            BorderRadius.circular(3.0),
                                       ),
                                     ),
                                     onPressed: () {
@@ -752,7 +761,7 @@ class _PhotosListState extends State<PhotosList> {
                               ),
                               Expanded(
                                 flex: 3,
-                                child: new TextButton(
+                                child: TextButton(
                                   style: ElevatedButton.styleFrom(
                                     foregroundColor:
                                         Color.fromARGB(255, 255, 255, 255),
@@ -832,9 +841,9 @@ class _PhotosListState extends State<PhotosList> {
                                         Alignment.center, Alignment.center, 5),
                                     minimumSize: Size(140, 60),
                                     maximumSize: Size(140, 60),
-                                    shape: new RoundedRectangleBorder(
+                                    shape: RoundedRectangleBorder(
                                       borderRadius:
-                                          new BorderRadius.circular(6.0),
+                                          BorderRadius.circular(6.0),
                                       side: BorderSide(
                                           color: Colors.grey
                                               .withValues(alpha: 0.5)),
@@ -873,9 +882,9 @@ class _PhotosListState extends State<PhotosList> {
                                         Alignment.center, Alignment.center, 5),
                                     minimumSize: Size(140, 60),
                                     maximumSize: Size(140, 60),
-                                    shape: new RoundedRectangleBorder(
+                                    shape: RoundedRectangleBorder(
                                       borderRadius:
-                                          new BorderRadius.circular(6.0),
+                                          BorderRadius.circular(6.0),
                                       side: BorderSide(
                                           color: Colors.grey
                                               .withValues(alpha: 0.5)),
@@ -918,8 +927,8 @@ class _PhotosListState extends State<PhotosList> {
                                 //Colors.grey[100],
                                 minimumSize: Size(88, 36),
                                 padding: EdgeInsets.symmetric(horizontal: 2),
-                                shape: new RoundedRectangleBorder(
-                                  borderRadius: new BorderRadius.circular(3.0),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(3.0),
                                 ),
                               ),
                               child: Text(
@@ -1009,10 +1018,10 @@ class _PhotosListState extends State<PhotosList> {
     );
   }
 
-  Future<void> sendMessage(String _code, String _message) async {
+  Future<void> sendMessage(String code, String message) async {
     var response = await http.get(
         Uri.parse(
-            "http://www.tiven.com.br/crud/insertMessage.php?CODE=$_code&MESSAGE=$_message"),
+            "http://www.tiven.com.br/crud/insertMessage.php?CODE=$code&MESSAGE=$message"),
         headers: {"Accept": "application/json"});
 
     if (response.contentLength! >= 1) {
@@ -1021,20 +1030,22 @@ class _PhotosListState extends State<PhotosList> {
   }
 
   // Platform messages are asynchronous, so we initialize in an async method.
-  Future<void> scanBarcodeLocation(_sku) async {
-    String locationScanRes;
-    // Platform messages may fail, so we use a try/catch PlatformException.
+  Future<void> scanBarcodeLocation(sku) async {
+    String locationScanRes = '';
+    // Platform messages may fail, so we use a try/catch for all exceptions.
     try {
       locationScanRes = await FlutterBarcodeScanner.scanBarcode(
           "#ff6666", "Cancelar", true, ScanMode.BARCODE);
-      String value = locationScanRes;
-      bool chkadd = _checkAddress(value);
+      if (locationScanRes.isNotEmpty && locationScanRes != '-1') {
+        String value = locationScanRes;
+        bool chkadd = _checkAddress(value);
 
-      if (chkadd == true) {
-        updateLocation(_sku, value.toString());
-        //print(locationScanRes);
+        if (chkadd == true) {
+          updateLocation(sku, value.toString());
+          //print(locationScanRes);
+        }
       }
-    } on PlatformException {
+    } catch (e) {
       locationScanRes = 'Falha ao verificar versão da plataforma.';
     }
     // If the widget was removed from the tree while the asynchronous platform
@@ -1047,12 +1058,12 @@ class _PhotosListState extends State<PhotosList> {
     });
   }
 
-  Future updateLocation(String _code, String _local) async {
+  Future updateLocation(String code, String local) async {
     var response = await http.get(
         Uri.parse(
-            "http://www.tiven.com.br/crud/updateLocation.php?CODE=$_code&LOCAL=$_local"),
+            "http://www.tiven.com.br/crud/updateLocation.php?CODE=$code&LOCAL=$local"),
         headers: {"Accept": "application/json"});
-    print(_local);
+    print(local);
     if (response.contentLength! >= 100) {
       setState(() {
         var convertDataToJson = json.decode(response.body);
@@ -1068,11 +1079,11 @@ class _PhotosListState extends State<PhotosList> {
     }
   }
 
-  Future insIssue(String _user, String _sku, String _type, bool _status) async {
+  Future insIssue(String user, String sku, String type, bool status) async {
     saved = false;
     var response = await http.get(
         Uri.parse(
-            "http://www.tiven.com.br/crud/insertIssue.php?isu_user=$_user&isu_sku=$_sku&isu_type=$_type&isu_status=$_status"),
+            "http://www.tiven.com.br/crud/insertIssue.php?isu_user=$user&isu_sku=$sku&isu_type=$type&isu_status=$status"),
         headers: {"Accept": "application/json"});
     setState(() {
       if (response.contentLength! >= 20) {
@@ -1147,52 +1158,54 @@ class _PhotosListState extends State<PhotosList> {
   }
 
   Future<void> scanBarcodeNormal(int idx) async {
-    String barcodeScanRes;
-    int _intCaptured = 1;
-    // Platform messages may fail, so we use a try/catch PlatformException.
+    String barcodeScanRes = '';
+    int intCaptured = 1;
+    // Platform messages may fail, so we use a try/catch for all exceptions.
     try {
       // scan barrcode from external source
       barcodeScanRes = await FlutterBarcodeScanner.scanBarcode(
           "#ff6666", "Cancelar", true, ScanMode.BARCODE);
 
-      // check for DUN14
-      if (barcodeScanRes.length == 14) {
-        _intCaptured = showInt(int.parse(barcodeScanRes.substring(0, 1)));
-        barcodeScanRes = barcodeScanRes.substring(1, 13);
-      }
+      if (barcodeScanRes.isNotEmpty && barcodeScanRes != '-1') {
+        // check for DUN14
+        if (barcodeScanRes.length == 14) {
+          intCaptured = showInt(int.parse(barcodeScanRes.substring(0, 1)));
+          barcodeScanRes = barcodeScanRes.substring(1, 13);
+        }
 
-      // check if scanner captured valid code found
-      if (barcodeScanRes.toString() == widget.photos[idx].ean.toString() ||
-          barcodeScanRes.toString() == widget.photos[idx].sku.toString()) {
-        if (_intCaptured <=
-            (int.parse(widget.photos[idx].qty) -
-                    int.parse(widget.photos[idx].captured)) +
-                1) {
+        // check if scanner captured valid code found
+        if (barcodeScanRes.toString() == widget.photos[idx].ean.toString() ||
+            barcodeScanRes.toString() == widget.photos[idx].sku.toString()) {
+          if (intCaptured <=
+              (int.parse(widget.photos[idx].qty) -
+                      int.parse(widget.photos[idx].captured)) +
+                  1) {
+            setState(
+              () {
+                widget.photos[idx].captured =
+                    (int.parse(widget.photos[idx].captured) + intCaptured)
+                        .toString();
+                setQty(
+                    http.Client(),
+                    widget.photos[idx].sku,
+                    widget.photos[idx].ean,
+                    widget.photos[idx].title,
+                    widget.photos[idx].address,
+                    '1');
+              },
+            );
+          }
+        }
+        print(barcodeScanRes);
+        if (widget.photos[idx].captured == widget.photos[idx].qty) {
           setState(
             () {
-              widget.photos[idx].captured =
-                  (int.parse(widget.photos[idx].captured) + _intCaptured)
-                      .toString();
-              setQty(
-                  http.Client(),
-                  widget.photos[idx].sku,
-                  widget.photos[idx].ean,
-                  widget.photos[idx].title,
-                  widget.photos[idx].address,
-                  '1');
+              widget.photos.removeAt(idx);
             },
           );
         }
       }
-      print(barcodeScanRes);
-      if (widget.photos[idx].captured == widget.photos[idx].qty) {
-        setState(
-          () {
-            widget.photos.removeAt(idx);
-          },
-        );
-      }
-    } on PlatformException {
+    } catch (e) {
       barcodeScanRes = 'Falha ao verificar versão da plataforma.';
     }
 
@@ -1207,9 +1220,7 @@ class _PhotosListState extends State<PhotosList> {
               " - " +
               widget.photos[idx].title.toString() +
               ' capturados'
-          : 'Todos ' +
-              widget.photos[idx].title.toString() +
-              ' foram capturados'),
+          : 'Todos ${widget.photos[idx].title} foram capturados'),
       action: SnackBarAction(
         textColor: widget.photos[idx].qty == widget.photos[idx].captured
             ? Colors.black
@@ -1250,7 +1261,7 @@ class _PhotosListState extends State<PhotosList> {
                 //   fit: BoxFit.cover,
                 // ),
               ),
-              new TextButton(
+              TextButton(
                 style: ButtonStyle(
                   foregroundColor: WidgetStateProperty.all<Color>(Colors.grey),
                   backgroundColor: WidgetStateProperty.all<Color>(Colors.black),
@@ -1269,7 +1280,7 @@ class _PhotosListState extends State<PhotosList> {
                         2.0),
                   ),
                 ),
-                child: new Text(widget.photos[idx].sku.toString(),
+                child: Text(widget.photos[idx].sku.toString(),
                     style: TextStyle(
                       color: Colors.white,
                       shadows: <Shadow>[
@@ -1306,7 +1317,7 @@ class _PhotosListState extends State<PhotosList> {
     );
   }
 
-  void _showDialogStaff(context, idx, _user) {
+  void _showDialogStaff(context, idx, user) {
     showDialog(
       context: context,
       builder: (context) {
@@ -1359,7 +1370,7 @@ class _PhotosListState extends State<PhotosList> {
                                   ),
                                 ),
                                 onPressed: () async {
-                                  await insIssue(_user, widget.photos[idx].sku,
+                                  await insIssue(user, widget.photos[idx].sku,
                                       "Nao Localizado", false);
                                   if (saved) {
                                     snacksaved();
@@ -1583,14 +1594,14 @@ class _PhotosListState extends State<PhotosList> {
     );
   }
 
-  snacksaved() {
+  void snacksaved() {
     final snackbar = SnackBar(
       backgroundColor: saved
           ? Colors.blueAccent[300]
           : Colors.redAccent.withValues(alpha: 0.9),
       content: saved
-          ? Text("Ocorrência com " + _sku + " registrada com sucesso!")
-          : Text("Ocorrência com " + _sku + " não registrada!"),
+          ? Text("Ocorrência com $_sku registrada com sucesso!")
+          : Text("Ocorrência com $_sku não registrada!"),
       action: SnackBarAction(
         textColor: saved ? Colors.black : Colors.white,
         label: 'Fechar',
@@ -1603,9 +1614,6 @@ class _PhotosListState extends State<PhotosList> {
   }
 
   bool isNumeric(String s) {
-    if (s == null) {
-      return false;
-    }
     return double.tryParse(s) != null;
   }
 

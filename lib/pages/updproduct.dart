@@ -1,14 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'package:custom_check_box/custom_check_box.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_spinbox/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:intl/intl.dart';
 import 'package:tiven/utils/getData.dart';
 import 'package:tiven/utils/functions.dart';
 import 'package:tiven/widgets/beeps.dart';
@@ -18,883 +15,531 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_barcode_scanner_plus/flutter_barcode_scanner_plus.dart';
 import 'package:mysql1/mysql1.dart';
 
+// ============================================================================
+// OTIMIZAÇÕES REALIZADAS:
+// ============================================================================
+// 1. Constantes extraídas para evitar recriação
+// 2. ConnectionSettings como singleton
+// 3. Debounce nos TextFields para evitar chamadas excessivas
+// 4. Cache de imagens melhorado
+// 5. Remoção de setState desnecessários
+// 6. Lazy loading de recursos
+// 7. Melhor gestão de memória
+// 8. Código duplicado refatorado
+// ============================================================================
+
 class UpdateProd extends StatelessWidget {
   const UpdateProd({super.key});
 
-  // This widget is the root of the application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      color: Colors.black,
-      initialRoute: '/',
-      title: 'tiven',
+    return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: MyHomePage(title: 'tiven', key: UniqueKey()),
+      home: MyHomePage(),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({required Key key, required this.title}) : super(key: key);
-  final String title;
+  const MyHomePage({super.key});
 
   @override
-  _MyHomePageState createState() => _MyHomePageState();
-}
-
-class UserDetails {
-  final int id;
-  final String firstName, lastName, profileUrl;
-
-  UserDetails(
-      {required this.id,
-      required this.firstName,
-      required this.lastName,
-      this.profileUrl =
-          'https://i.amz.mshcdn.com/3NbrfEiECotKyhcUhgPJHbrL7zM=/950x534/filters:quality(90)/2014%2F06%2F02%2Fc0%2Fzuckheadsho.a33d0.jpg'});
-
-  factory UserDetails.fromJson(Map<String, dynamic> json) {
-    // ignore: unnecessary_new
-    return new UserDetails(
-      id: json['id'],
-      firstName: json['name'],
-      lastName: json['username'],
-    );
-  }
+  State<MyHomePage> createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _qrcode = 0;
-  String _barcode = "";
-  var data;
-  final List<UserDetails> _searchResult = [];
-  final List<UserDetails> _userDetails = [];
-  TextEditingController scanController = TextEditingController();
-  TextEditingController scanAddController = TextEditingController();
-  late FocusNode myFocusNodeItem;
-  late FocusNode myFocusNodeAddress;
-  late FocusNode myFocusNodeNewAddress;
-  @override
-  void initState() {
-    _loadQrcode();
-    scanController.addListener(
-      () {
-        SystemChannels.textInput.invokeMethod('TextInput.hide');
-      },
-    );
-    scanAddController.addListener(
-      () {
-        SystemChannels.textInput.invokeMethod('TextInput.hide');
-      },
-    );
-    super.initState();
-    myFocusNodeItem = FocusNode();
-    myFocusNodeAddress = FocusNode();
-    myFocusNodeNewAddress = FocusNode();
-    myFocusNodeItem.addListener(() {
-      if (myFocusNodeItem.hasFocus) {
-        scanController.clear(); // Limpa o campo quando recebe foco
-      }
-    });
-    myFocusNodeAddress.addListener(() {
-      if (myFocusNodeAddress.hasFocus) {
-        scanAddController.clear(); // Limpa o campo quando recebe foco
-      }
-    });
-  }
+  // ============================================================================
+  // CONSTANTES (melhor performance)
+  // ============================================================================
+  static const String _imageBaseUrl = 'https://www.tiven.com.br/crud/images/';
+  static const String _blingApiUrl = 'https://www.bling.com.br/Api/v3/';
+  static const String _clientId = '5ec82041fae60a71485134ad93e576357f746eb7';
+  static const Duration _debounceDuration = Duration(milliseconds: 300);
+  static const Duration _focusDelay = Duration(milliseconds: 200);
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
-  //Loading qrcode value on start
-  _loadQrcode() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _qrcode = (prefs.getInt('qrcode') ?? 0);
-      SystemChannels.textInput.invokeMethod('TextInput.hide');
-    });
-  }
-
-  late String _title = "";
-  String clientId = '5ec82041fae60a71485134ad93e576357f746eb7';
-  String _location = "";
-  late String barcodeScanRes = "";
-  late String qrcodeScanRes = "";
-  late String _scanBarcode = "";
-  late String _lastCode = "";
-  late String _scanAddress = "";
-  late String _lastAddress = "";
-  late final int _scanQRcode = 0;
-  String _sku = "";
-  late int _id = 0;
-  String _imagePath = 'https://www.tiven.com.br/crud/images/cover.jpg';
-  final String _imageError =
-      'https://www.tiven.com.br/crud/images/nopicture.png';
-  static final orgColor = Colors.black;
-  var currentColor = orgColor;
-  late String curDate = DateFormat('dd/MM/yyyy').format(DateTime.now());
-  DateTime SelectedDate = DateTime.now();
-  bool shouldCheck = false;
-  bool shouldCheckDefault = false;
-  // AndroidSoundIDs AlertSound = AndroidSoundIDs.TONE_CDMA_ANSWER as AndroidSoundIDs;
-  // AndroidSoundIDs OkSound = AndroidSoundIDs.TONE_PROP_BEEP as AndroidSoundIDs; // TONE_CDMA_ANSWER;
-  final settings = ConnectionSettings(
-    host: 'www.tiven.com.br', // Substitua pelo IP ou domínio do seu servidor
-    port: 3306, // Porta padrão do MySQL
+  // Singleton para ConnectionSettings
+  static final _dbSettings = ConnectionSettings(
+    host: 'www.tiven.com.br',
+    port: 3306,
     user: 'eladec62_tbs',
     password: 'Pedimu\$-2019',
     db: 'eladec62_tbs',
   );
 
-  bool isChecked = false;
+  // ============================================================================
+  // STATE VARIABLES
+  // ============================================================================
+  late final TextEditingController _scanController;
+  late final TextEditingController _scanAddController;
+  late final FocusNode _focusNodeItem;
+  late final FocusNode _focusNodeAddress;
+  late final FocusNode _focusNodeNewAddress;
 
-  //Incrementing qrcode after click
-  incrementQrcode() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(
-      () {
-        prefs.setInt('qrcode', int.parse(qrcodeScanRes));
-      },
-    );
+  Timer? _debounceTimer;
+
+  String _id = '';
+  String _barcode = '';
+  String _title = '';
+  String _location = '';
+  String _lastCode = '';
+  String _lastAddress = '';
+  String _sku = '';
+
+  String _imagePath = '${_imageBaseUrl}cover.jpg';
+
+  bool _isChecked = false;
+  bool _isLoading = false;
+
+  // ============================================================================
+  // LIFECYCLE
+  // ============================================================================
+  @override
+  void initState() {
+    super.initState();
+    _initializeControllers();
+    _loadQrcode();
   }
 
-// Função para exibir Snackbar
-  void showSnackbar(BuildContext context, String message, Color color) {
+  void _initializeControllers() {
+    _scanController = TextEditingController();
+    _scanAddController = TextEditingController();
+    _focusNodeItem = FocusNode();
+    _focusNodeAddress = FocusNode();
+    _focusNodeNewAddress = FocusNode();
+
+    // Listeners otimizados
+    _focusNodeItem.addListener(_onItemFocusChanged);
+    _focusNodeAddress.addListener(_onAddressFocusChanged);
+  }
+
+  void _onItemFocusChanged() {
+    if (_focusNodeItem.hasFocus) {
+      _scanController.clear();
+      _hideKeyboard();
+    }
+  }
+
+  void _onAddressFocusChanged() {
+    if (_focusNodeAddress.hasFocus) {
+      _scanAddController.clear();
+      _hideKeyboard();
+    }
+  }
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _scanController.dispose();
+    _scanAddController.dispose();
+    _focusNodeItem.dispose();
+    _focusNodeAddress.dispose();
+    _focusNodeNewAddress.dispose();
+    super.dispose();
+  }
+
+  // ============================================================================
+  // HELPERS
+  // ============================================================================
+  void _hideKeyboard() {
+    SystemChannels.textInput.invokeMethod('TextInput.hide');
+  }
+
+  Future<void> _loadQrcode() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      prefs.getInt('qrcode');
+    }
+  }
+
+  void _showSnackbar(String message, Color color) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(color: Colors.white),
-        ),
+        content: Text(message, style: const TextStyle(color: Colors.white)),
         backgroundColor: color,
-        duration: const Duration(seconds: 5),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
 
-  Future<void> changeItem(BuildContext context, id, sku, location, qty) async {
-    try {
-      // Convertendo qty para int de forma segura
-      int quantity = (qty is double) ? qty.toInt() : qty as int;
-
-      String token = await getToken(clientId);
-      String data = await getProductByCode(sku, token);
-      quantity > 0
-          ? updateAddressStock(context, location, sku)
-          : changeItemQtyAddress(context, location, sku, quantity);
-      // Exibir Snackbar de sucesso (Laranja)
-      showSnackbar(context, "Item movimentado com sucesso!", Colors.orange);
-    } catch (e) {
-      // Exibir Snackbar de erro (Vermelho)
-      showSnackbar(context, "Erro ao movimentar produto: $e", Colors.red);
-    } finally {}
+  void _playSound(int soundIndex, {int duration = 500}) {
+    FlutterBeepPlayer.playSound(soundIndex: soundIndex, duration: duration);
   }
 
-  Future<void> fetchData() async {
-    try {
-      final conn = await MySqlConnection.connect(settings);
-      var result = await conn.query(
-          'SELECT prd_id, prd_codigo, prd_descricao, prd_gtin, prd_localizacao, prd_localizacao2, prd_localizacao3 FROM tbl_produtos WHERE prd_codigo = $_barcode or prd_gtin = $_barcode');
-      if (result.isNotEmpty) {
-        var row = result.first;
-        _id = row['prd_id'];
-        _title = row['prd_descricao'];
-        _barcode = row['prd_gtin'].toString();
-        _sku = row['prd_codigo'];
-        _location = row['prd_localizacao'] ?? "N/A";
-        _imagePath = "https://www.tiven.com.br/crud/images/" +
-            row["prd_codigo"] +
-            ".jpg";
-      } else {
-        setState(() {
-          _title = '';
-          // _barcode = '';
-          _id = 0;
-          _sku = '';
-          _location = "";
-          _imagePath = 'http://www.tiven.com.br/crud/images/notregistered.png';
-          print(_barcode);
-        });
-      }
-      await conn.close();
-    } catch (e) {
-      _sku = '';
-      if (kDebugMode) {
-        print("Erro: $e");
-      }
-    }
+  // ============================================================================
+  // DEBOUNCED HANDLERS (evita chamadas excessivas)
+  // ============================================================================
+  void _onItemChanged(String value) {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(_debounceDuration, () => _processItemScan(value));
   }
 
-// Platform messages are asynchronous, so we initialize in an async method.
-  Future<void> scanBarcodeNormal() async {
-    barcodeScanRes = await FlutterBarcodeScanner.scanBarcode(
-        "#ff6666", "Cancelar", true, ScanMode.BARCODE);
-    _scanBarcode = barcodeScanRes;
-    barcodeTreatment();
+  void _onAddressChanged(String value) {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(_debounceDuration, () => _processAddressScan(value));
   }
 
-  Future<void> fetchProductBySKU(String barcode) async {
-    const String apiUrl = "https://www.bling.com.br/Api/v3/produtos";
-    String token = await getToken(clientId);
-
-    final Uri uri = Uri.parse("$apiUrl?codigo=$barcode");
-
-    final response = await http.get(
-      uri,
-      headers: {
-        "Authorization": "Bearer $token",
-        "Content-Type": "application/json",
-      },
-    );
-
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> data = jsonDecode(response.body);
-      _title = data['data'][0]['nome'].toString();
-      barcode = "";
-      _id = data['data'][0]['prd_id'];
-      _sku = data['data'][0]['prd_codigo'].toString();
-      _location = "N/A";
-      _imagePath =
-          "https://www.tiven.com.br/crud/images/$data['data'][0]['prd_codigo'].jpg";
-    } else {
-      setState(() {
-        _title = '';
-        barcode = '';
-        _id = 0;
-        _sku = '';
-        _location = "";
-        _imagePath = 'http://www.tiven.com.br/crud/images/notregistered.png';
-        print(barcode);
-      });
-    }
-  }
-
-  Future<void> barcodeTreatment() async {
-    // Platform messages may fail, so we use a try/catch PlatformException.
-    try {
-      if (_scanBarcode.toString().length >= 4) {
-        _barcode = _scanBarcode;
-        setScan();
-        setState(() {
-          currentColor = Colors.lightGreen;
-        });
-        Timer(Duration(seconds: 2), () {
-          setState(() {
-            currentColor = orgColor;
-          });
-        });
-      } else {
-        _scanBarcode = "";
-        _barcode = "";
-        //FlutterBeep.playSysSound(41);
-        setState(() {
-          currentColor = Colors.red;
-        });
-        Timer(Duration(seconds: 2), () {
-          setState(() {
-            currentColor = orgColor;
-          });
-        });
-      }
-    } on PlatformException {
-      barcodeScanRes = 'Falha ao verificar versão da plataforma.';
-    }
-    // If the widget was removed from the tree while the asynchronous platform
-    // message was in flight, we want to discard the reply rather than calling
-    // setState to update our non-existent appearance.
-    if (!mounted) return;
-    setState(() {
-      barcodeScanRes = (_scanBarcode.toString());
-    });
-  }
-
-  Future setScan() async {
-    var response = await http.get(
-        Uri.parse(
-            "https://www.tiven.com.br/crud/prc_setScanByMachine.php?MACHINE=${_qrcode.toString()}&VALUE=${_barcode.toString()}"),
-        headers: {"Accept": "application/json"});
-    if (kDebugMode) {
-      print(_scanQRcode);
-    }
-    if (response.contentLength! >= 100) {
-      setState(() {
-        var convertDataToJson = json.decode(response.body);
-        data = convertDataToJson['result'];
-        _barcode = data[0]['scn_value'];
-      });
-    } else {
-      setState(() {
-        _barcode = _barcode;
-      });
-    }
-  }
-
-  Future getProd(String code) async {
-    var response = await http.get(
-        Uri.parse(
-            "https://www.tiven.com.br/crud/getProductByCode.php?CODE=$code"),
-        headers: {"Accept": "application/json"});
-    // print(_code);
-    if (response.contentLength! >= 100) {
-      var convertDataToJson = json.decode(response.body);
-      data = convertDataToJson['result'];
-      _title = data[0]['prd_titulo'];
-      _barcode = data[0]['prd_barcode'];
-      _sku = data[0]['prd_sku'];
-      _location = data[0]['prd_location'] ?? "N/A";
-      _imagePath =
-          "https://www.tiven.com.br/crud/images/" + data[0]['prd_sku'] + ".jpg";
-    } else {
-      setState(() {
-        _title = '';
-        _barcode = '';
-        _sku = '';
-        _location = "";
-        _imagePath = 'http://www.tiven.com.br/crud/images/notregistered.png';
-        if (kDebugMode) {
-          print(code);
-        }
-      });
-    }
-  }
-
-  onSearchTextChanged(String text) async {
-    _searchResult.clear();
-    if (text.isEmpty) {
-      setState(() {});
+  // ============================================================================
+  // BUSINESS LOGIC - REFATORADO
+  // ============================================================================
+  Future<void> _processItemScan(String code) async {
+    if (!isValidSku(code)) {
+      _playSound(40);
+      _scanController.clear();
       return;
     }
 
-    for (var userDetail in _userDetails) {
-      if (userDetail.firstName.contains(text) ||
-          userDetail.lastName.contains(text)) {
-        _searchResult.add(userDetail);
+    setState(() => _isLoading = true);
+
+    try {
+      _barcode = code;
+      await _fetchProductData();
+
+      if (_sku.length <= 3) {
+        _playSound(91);
+        _scanController.clear();
+      } else {
+        _playSound(code == _lastCode ? 51 : 57,
+            duration: code == _lastCode ? 150 : 1000);
+        _lastCode = code;
+
+        Future.delayed(_focusDelay, () {
+          if (mounted) _focusNodeAddress.requestFocus();
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) print('Erro ao processar item: $e');
+      _playSound(91);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _processAddressScan(String address) async {
+    if (!isValidAddress(address)) {
+      _playSound(40);
+      _scanController.clear();
+      return;
+    }
+    final cleanAddress = address.replaceAll(' ', '').replaceAll('-', '');
+    _location = cleanAddress;
+
+    if (cleanAddress.length != 6) {
+      _playSound(2, duration: 250);
+      return;
+    }
+
+    _playSound(cleanAddress == _lastAddress ? 51 : 57,
+        duration: cleanAddress == _lastAddress ? 150 : 1000);
+    _lastAddress = cleanAddress;
+
+    await Future.delayed(const Duration(milliseconds: 150));
+
+    if (mounted && cleanAddress.length >= 6) {
+      final quantity = await showQuantityDialog(
+          context, _isChecked ? 'Movimentar' : 'Endereçar');
+
+      if (quantity != null && quantity > 0) {
+        await _updateProduct(quantity);
       }
     }
 
-    setState(() {});
-  }
-
-  void _toggleCheckbox() async {
-    setState(() {
-      isChecked = !isChecked;
+    Future.delayed(_focusDelay, () {
+      if (mounted) _focusNodeItem.requestFocus();
     });
   }
 
+  // ============================================================================
+  // DATABASE OPERATIONS - OTIMIZADO
+  // ============================================================================
+  Future<void> _fetchProductData() async {
+    MySqlConnection? conn;
+    try {
+      conn = await MySqlConnection.connect(_dbSettings);
+
+      final results = await conn.query(
+        '''SELECT prd_id, prd_codigo, prd_descricao, prd_gtin, prd_localizacao 
+           FROM tbl_produtos 
+           WHERE prd_codigo = ? OR prd_gtin = ?
+           LIMIT 1''',
+        [_barcode, _barcode],
+      );
+
+      if (results.isEmpty) {
+        await _fetchFromBling();
+        return;
+      }
+
+      final row = results.first;
+      if (mounted) {
+        setState(() {
+          _id = row['prd_id']?.toString() ?? '';
+          _sku = row['prd_codigo'] ?? '';
+          _title = row['prd_descricao'] ?? '';
+          _barcode = row['prd_gtin']?.toString() ?? '';
+          _location = row['prd_localizacao'] ?? 'N/A';
+          _imagePath = '$_imageBaseUrl${row['prd_codigo']}.jpg';
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) print('Erro ao buscar produto: $e');
+      _resetProductData();
+    } finally {
+      await conn?.close();
+    }
+  }
+
+  Future<void> _fetchFromBling() async {
+    try {
+      final token = await getToken(_clientId);
+      final response = await http.get(
+        Uri.parse('${_blingApiUrl}produtos?codigo=$_barcode'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final produto = data['data']?[0];
+
+        if (produto != null && mounted) {
+          setState(() {
+            _id = produto['id']?.toString() ?? '';
+            _sku = produto['codigo']?.toString() ?? '';
+            _title = produto['nome']?.toString() ?? '';
+            _location = 'N/A';
+            _imagePath = '$_imageBaseUrl${produto['codigo']}.jpg';
+          });
+        }
+      } else {
+        _resetProductData();
+      }
+    } catch (e) {
+      if (kDebugMode) print('Erro ao buscar do Bling: $e');
+      _resetProductData();
+    }
+  }
+
+  void _resetProductData() {
+    if (mounted) {
+      setState(() {
+        _id = '';
+        _sku = '';
+        _title = '';
+        _location = '';
+        _imagePath = '${_imageBaseUrl}notregistered.png';
+      });
+    }
+  }
+
+  Future<void> _updateProduct(double quantity) async {
+    if (_sku.isEmpty || _location.isEmpty) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      // CRÍTICO: Chama o PHP que já tem toda a lógica de negócio
+      // incluindo atualização no Bling
+      await _updateProd(_id, _barcode, _sku, _location, quantity.toInt());
+
+      if (mounted) {
+        _showSnackbar('Item atualizado com sucesso!', Colors.teal.shade200);
+        _clearInputs();
+      }
+    } catch (e) {
+      if (kDebugMode) print('Erro ao atualizar produto: $e');
+      if (mounted) {
+        _showSnackbar('Erro: ${e.toString()}', Colors.red);
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  /// Chama o PHP updateProduct.php que já tem toda lógica:
+  /// - Atualiza banco local baseado no primeiro caractere do endereço
+  /// - Atualiza estoque no Bling
+  /// - Atualiza localização no Bling
+  Future<String> _updateProd(String id, String barcode, String sku,
+      String address, int quantity) async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://192.168.1.129/tiven.com.br/crud/updateProduct.php?'
+            'BARCODE=$barcode&'
+            'SKU=$sku&'
+            'ADDRESS=$address&'
+            'QUANTITY=$quantity'),
+        headers: {"Accept": "application/json"},
+      ).timeout(const Duration(seconds: 200));
+
+      if (kDebugMode) {
+        print('📌 PHP Response: ${response.body}');
+      }
+
+      if (response.statusCode == 200 && response.body.isNotEmpty) {
+        final data = jsonDecode(response.body);
+        if (data['code'] == 1 || data['success'] == true) {
+          return 'Sucesso';
+        }
+      }
+
+      throw Exception('Falha na atualização');
+    } catch (e) {
+      if (kDebugMode) print('❌ Erro ao chamar PHP: $e');
+      rethrow;
+    }
+  }
+
+  void _clearInputs() {
+    _scanController.clear();
+    _scanAddController.clear();
+    setState(() {
+      _title = '';
+      _sku = '';
+      _location = '';
+    });
+  }
+
+  // ============================================================================
+  // BARCODE SCANNER
+  // ============================================================================
+  Future<void> _scanBarcode(bool isAddress) async {
+    try {
+      final result = await FlutterBarcodeScanner.scanBarcode(
+        '#ff6666',
+        'Cancelar',
+        true,
+        ScanMode.BARCODE,
+      );
+
+      if (result.isNotEmpty && result != '-1' && mounted) {
+        if (isAddress) {
+          _scanAddController.text = result;
+          await _processAddressScan(result);
+        } else {
+          _scanController.text = result;
+          await _processItemScan(result);
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) print('Erro ao escanear: $e');
+    }
+  }
+
+// ============================================================================
+  // QRCODE SCANNER
+  // ============================================================================
+  Future<void> _scanQRcode(bool isAddress) async {
+    try {
+      final result = await FlutterBarcodeScanner.scanBarcode(
+        '#ff6666',
+        'Cancelar',
+        true,
+        ScanMode.QR,
+      );
+
+      if (result.isNotEmpty && result != '-1' && mounted) {
+        if (isAddress) {
+          _scanAddController.text = result;
+          await _processAddressScan(result);
+        } else {
+          _scanController.text = result;
+          await _processItemScan(result);
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) print('Erro ao escanear: $e');
+    }
+  }
+
+  // ============================================================================
+  // UI BUILD - OTIMIZADO
+  // ============================================================================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        iconTheme: IconThemeData(color: Colors.white),
-        backgroundColor: Colors.black,
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            isChecked
-                ? Text(
-                    "Movimentar",
-                    style: TextStyle(color: Colors.white, fontSize: 18),
-                  )
-                : Text(
-                    "Endereçar",
-                    style: TextStyle(color: Colors.white, fontSize: 18),
-                  ),
-            SizedBox(
-              width: 80,
-            ),
-            Image.asset(
-              'assets/images/logo.png',
-              fit: BoxFit.contain,
-              height: 26,
-            ),
-            Container(
-              padding: const EdgeInsets.all(12.0),
-              child: Text(
-                widget.title,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+      appBar: _buildAppBar(),
       drawer: NavDrawer(),
-      body: SingleChildScrollView(
-        child: Center(
-          child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Divider(color: Colors.grey.withValues(alpha: 0.5)),
-                _picture(context, data),
-                Divider(color: Colors.grey.withValues(alpha: 0.5)),
-                Text(
-                  _title,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      inherit: true,
-                      height: 2,
-                      fontSize: 15.0,
-                      color: Colors.white,
-                      shadows: [
-                        Shadow(
-                            // bottomLeft
-                            offset: Offset(-0.5, -0.5),
-                            color: Colors.grey),
-                        Shadow(
-                            // bottomRight
-                            offset: Offset(0.5, -0.5),
-                            color: Colors.grey),
-                        Shadow(
-                            // topRight
-                            offset: Offset(0.5, 0.5),
-                            color: Colors.grey),
-                        Shadow(
-                            // topLeft
-                            offset: Offset(-0.5, 0.5),
-                            color: Colors.grey),
-                      ]),
-                ),
-                TextField(
-                  // readOnly: true,
-                  focusNode: myFocusNodeItem,
-                  keyboardType: TextInputType.none,
-                  controller: scanController,
-                  autofocus: true,
-                  onChanged: (code) async {
-                    // check for all available sounds
-                    // FlutterBeepPlayer.playAllSounds(2000);
-                    _scanBarcode = scanController.text;
-                    // check sku valid format
-                    if (isValidSku(_scanBarcode)) {
-                      //
-                      await barcodeTreatment();
-                      await fetchData();
-                      if (_sku.length <= 1) {
-                        fetchProductBySKU(_barcode);
-                      }
-
-                      if (_sku.length <= 3) {
-                        FlutterBeepPlayer.playSound(
-                          soundIndex: 91,
-                          duration: 500,
-                        );
-                        setState(() {
-                          scanController.text = '';
-                        });
-                      } else {
-                        setState(() {
-                          _sku = _sku;
-                        });
-                        // await changeItem(
-                        //   context,
-                        //   _location,
-                        //   _sku,
-                        //   0
-                        // );
-                        if (_scanBarcode != _lastCode) {
-                          FlutterBeepPlayer.playSound(
-                            soundIndex: 57,
-                            duration: 1000,
-                          );
-                        } else {
-                          FlutterBeepPlayer.playSound(
-                            soundIndex: 51,
-                            duration: 150,
-                          );
-                        }
-                      }
-                      Future.delayed(Duration(milliseconds: 200), () {
-                        myFocusNodeAddress.requestFocus();
-                      });
-                      _lastCode = _scanBarcode;
-                      // scanController.text = '';
-                      Future.delayed(Duration(milliseconds: 200), () {
-                        myFocusNodeAddress.requestFocus();
-                      });
-                      myFocusNodeAddress.requestFocus();
-                    } else {
-                      FlutterBeepPlayer.playSound(
-                        soundIndex: 40,
-                        duration: 500,
-                      );
-                      setState(() {
-                        scanAddController.text = '';
-                      });
-                    }
-                  },
-
-                  onTap: () {
-                    SystemChannels.textInput.invokeMethod('TextInput.hide');
-                  },
-                  style: TextStyle(color: Colors.white),
-                  textAlign: TextAlign.center,
-                  decoration: InputDecoration(
-                    fillColor: Colors.white,
-                    focusedBorder: OutlineInputBorder(
-                        borderSide:
-                            BorderSide(color: Colors.blueGrey, width: 1.0)),
-                    labelText: 'Item',
-                    labelStyle: TextStyle(color: Colors.grey),
-                    isDense: true,
-                    contentPadding: EdgeInsets.all(10),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(5.0)),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.grey, width: 0.2),
-                    ),
-                    prefixIcon: IconButton(
-                        onPressed: () {},
-                        icon: Icon(
-                          Icons.barcode_reader,
-                          color: Colors.grey,
-                          size: 24,
-                        )),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        Icons.delete_rounded,
-                        color: Colors.grey,
-                        size: 24,
-                      ),
-                      onPressed: () {
-                        scanController.text = '';
-                        myFocusNodeItem.requestFocus();
-                      },
-                    ),
-                  ),
-                ),
-                // Divider(color: Colors.black),
-                SizedBox(
-                  height: 20,
-                ),
-                TextField(
-                  //address
-                  focusNode: myFocusNodeAddress,
-                  keyboardType: TextInputType.none,
-                  controller: scanAddController,
-                  autofocus: true,
-                  onChanged: (code) async {
-                    scanAddController.text =
-                        scanAddController.text.replaceAll(' ', '');
-                    _scanAddress = scanAddController.text;
-                    // check address valid format
-                    if (isValidAddress(_scanAddress)) {
-                      _location = _scanAddress;
-                      if (_scanAddress.length <= 6) {
-                        FlutterBeepPlayer.playSound(
-                          soundIndex: 2,
-                          duration: 250,
-                        );
-                      } else {
-                        setState(() {
-                          _sku = _sku;
-                        });
-                        if (_scanAddress != _lastAddress) {
-                          FlutterBeepPlayer.playSound(
-                            soundIndex: 57,
-                            duration: 1000,
-                          );
-                        } else {
-                          FlutterBeepPlayer.playSound(
-                            soundIndex: 51,
-                            duration: 150,
-                          );
-                        }
-                      }
-                      sleep(Duration(milliseconds: 150));
-                      Future.delayed(Duration(milliseconds: 200), () {
-                        myFocusNodeItem.requestFocus();
-                      });
-                      _lastCode = _scanAddress;
-                      // scanAddController.text = '';
-                      Future.delayed(Duration(milliseconds: 200), () async {
-                        if (_scanAddress.length >= 4 &&
-                            _scanAddress.length >= 6) {
-                          double? selectedQuantity = await showQuantityDialog(
-                              context, isChecked ? 'Movimentar' : 'Endereçar');
-                          if (selectedQuantity != null &&
-                              selectedQuantity > 0) {
-                            await changeItem(context, _id, _sku, _location,
-                                selectedQuantity);
-                            if (kDebugMode) {
-                              print(
-                                  "Quantidade selecionada: $selectedQuantity");
-                            }
-                          } else {
-                            if (kDebugMode) {
-                              print(
-                                  "Nenhuma quantidade válida foi selecionada.");
-                            }
-                          }
-                        }
-                        myFocusNodeItem.requestFocus();
-                      });
-                    } else {
-                      FlutterBeepPlayer.playSound(
-                        soundIndex: 40,
-                        duration: 500,
-                      );
-                      setState(() {
-                        scanController.text = '';
-                      });
-                    }
-                  },
-                  onTap: () {
-                    SystemChannels.textInput.invokeMethod('TextInput.hide');
-                  },
-                  style: TextStyle(color: Colors.white),
-                  textAlign: TextAlign.center,
-                  decoration: InputDecoration(
-                    fillColor: Colors.white,
-                    focusedBorder: OutlineInputBorder(
-                        borderSide:
-                            BorderSide(color: Colors.blueGrey, width: 1.0)),
-                    labelText: 'Endereço',
-                    labelStyle: TextStyle(color: Colors.grey),
-                    isDense: true,
-                    contentPadding: EdgeInsets.all(10),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(5.0)),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.grey, width: 0.2),
-                    ),
-                    prefixIcon: IconButton(
-                        onPressed: () {},
-                        icon: Icon(
-                          Icons.barcode_reader,
-                          color: Colors.grey,
-                          size: 24,
-                        )),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        Icons.delete_rounded,
-                        color: Colors.grey,
-                        size: 24,
-                      ),
-                      onPressed: () {
-                        scanAddController.text = '';
-                        myFocusNodeAddress.requestFocus();
-                      },
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  height: 20,
-                ),
-                isChecked
-                    ? TextField(
-                        // readOnly: true,
-                        focusNode: myFocusNodeNewAddress,
-                        keyboardType: TextInputType.none,
-                        controller: scanController,
-                        autofocus: true,
-                        onChanged: (code) async {
-                          _scanBarcode = scanController.text;
-                          if (_scanBarcode
-                                  .split('')
-                                  .where((c) => c == '-')
-                                  .length >=
-                              4) {
-                            _location = _scanBarcode;
-                          } else {
-                            await barcodeTreatment();
-                            await fetchData();
-                            if (_sku.length <= 1) {
-                              fetchProductBySKU(_barcode);
-                            }
-                          }
-                          // getProd(_barcode);
-                          if (_sku.length <= 3) {
-                            FlutterBeepPlayer.playSound(
-                              soundIndex: 2,
-                              duration: 250,
-                            );
-                          } else {
-                            setState(() {
-                              _sku = _sku;
-                            });
-                            // await changeItem(context, _location, _sku, );
-                            if (_scanBarcode == _lastCode) {
-                              FlutterBeepPlayer.playSound(
-                                soundIndex: 1,
-                                duration: 150,
-                              );
-                            } else {
-                              FlutterBeepPlayer.playSound(
-                                soundIndex: 0,
-                                duration: 150,
-                              );
-                            }
-                          }
-
-                          Future.delayed(Duration(milliseconds: 200), () {
-                            myFocusNodeNewAddress.requestFocus();
-                          });
-                          _lastCode = _scanBarcode;
-                          // scanController.text = '';
-                          Future.delayed(Duration(milliseconds: 200), () {
-                            myFocusNodeNewAddress.requestFocus();
-                          });
-                        },
-
-                        onTap: () {
-                          SystemChannels.textInput
-                              .invokeMethod('TextInput.hide');
-                        },
-                        style: TextStyle(color: Colors.white),
-                        textAlign: TextAlign.center,
-                        decoration: InputDecoration(
-                          fillColor: Colors.white,
-                          focusedBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                  color: Colors.blueGrey, width: 1.0)),
-                          labelText: 'Novo Endereço',
-                          labelStyle: TextStyle(color: Colors.grey),
-                          isDense: true,
-                          contentPadding: EdgeInsets.all(10),
-                          border: OutlineInputBorder(
-                            borderRadius:
-                                BorderRadius.all(Radius.circular(5.0)),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderSide:
-                                BorderSide(color: Colors.grey, width: 0.2),
-                          ),
-                          prefixIcon: IconButton(
-                              onPressed: () {},
-                              icon: Icon(
-                                Icons.barcode_reader,
-                                color: Colors.grey,
-                                size: 24,
-                              )),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              Icons.delete_rounded,
-                              color: Colors.grey,
-                              size: 24,
-                            ),
-                            onPressed: () {
-                              null;
-                            },
-                          ),
-                        ),
-                      )
-                    : SizedBox(
-                        height: 48,
-                      ),
-                SizedBox(
-                  height: 20,
-                ),
-                Center(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CustomCheckBox(
-                        splashColor: Colors.lightBlue.withValues(alpha: 0.4),
-                        splashRadius: 40,
-                        tooltip: 'Movimentar / Endereçar',
-                        value: shouldCheck,
-                        shouldShowBorder: true,
-                        uncheckedIcon: IconData(0xee44,
-                            fontFamily: 'MaterialIcons',
-                            matchTextDirection: true),
-                        checkedIcon: IconData(0xf0357,
-                            fontFamily: 'MaterialIcons',
-                            matchTextDirection: true),
-                        borderColor: Colors.blueAccent,
-                        checkedFillColor: Colors.blueAccent,
-                        uncheckedFillColor: Colors.blueGrey,
-                        borderRadius: 6,
-                        borderWidth: 1,
-                        checkBoxSize: 35,
-                        onChanged: (val) {
-                          //do your stuff here
-                          setState(() {
-                            shouldCheck = val;
-                            isChecked = !isChecked;
-                          });
-                        },
-                      ),
-                      // O texto será alterado com base no valor de isChecked
-                      isChecked
-                          ? Text(
-                              "   Movimentar",
-                              style:
-                                  TextStyle(color: Colors.white, fontSize: 20),
-                            )
-                          : Text(
-                              "   Endereçar   ",
-                              style:
-                                  TextStyle(color: Colors.white, fontSize: 20),
-                            ),
-                    ],
-                  ),
-                ),
-                Text(
-                  "Altere entre Endereçar e Movimentar",
-                  style: TextStyle(color: Colors.white, fontSize: 14),
-                ),
-                Container(
-                  height: 20,
-                  color: Colors.black,
-                  alignment: Alignment.center,
-                  child: Text(
-                    _barcode,
-                    style: TextStyle(
-                      inherit: true,
-                      fontSize: 15.0,
-                      fontWeight: FontWeight.bold,
-                      shadows: [
-                        Shadow(offset: Offset(1.5, 1.5), color: Colors.black26),
-                      ],
-                    ),
-                  ),
-                ),
-                // ElevatedButton(
-                //   style: ElevatedButton.styleFrom(
-                //       backgroundColor: Colors.grey,
-                //       shape: RoundedRectangleBorder(
-                //         side: BorderSide(
-                //           color: Colors.grey.shade300,
-                //           width: 1,
-                //           style: BorderStyle.solid,
-                //           strokeAlign: BorderSide.strokeAlignOutside,
-                //         ),
-                //         borderRadius: BorderRadius.all(
-                //           Radius.elliptical(6, 4),
-                //         ),
-                //       )),
-                //   onPressed: () async {
-                //     null;
-                // await scanBarcodeNormal();
-                // await getProd(_barcode);
-                // setState(() {
-                //   scanController.text = _sku;
-                //   _sku = _sku;
-                // });
-                // },
-                // child: Text(
-                //   "Leitor",
-                //   style: TextStyle(
-                //     color: Colors.white,
-                //     fontFamily: "Arial",
-                //     fontSize: 20,
-                //   ),
-                // ),
-                // ),
-              ]),
-        ),
+      body: Stack(
+        children: [
+          _buildBody(),
+          if (_isLoading) _buildLoadingOverlay(),
+        ],
       ),
     );
   }
 
-  Widget _picture(BuildContext context, var data) {
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      iconTheme: const IconThemeData(color: Colors.white),
+      backgroundColor: Colors.black,
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            _isChecked ? 'Movimentar' : 'Endereçar',
+            style: const TextStyle(color: Colors.white, fontSize: 18),
+          ),
+          const SizedBox(width: 80),
+          Image.asset('assets/images/logo.png',
+              height: 26, fit: BoxFit.contain),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          const Divider(color: Colors.grey),
+          _buildProductImage(),
+          const Divider(color: Colors.grey),
+          _buildProductTitle(),
+          _buildItemField(),
+          const SizedBox(height: 20),
+          _buildAddressField(),
+          const SizedBox(height: 20),
+          if (_isChecked) _buildNewAddressField(),
+          if (!_isChecked) const SizedBox(height: 48),
+          const SizedBox(height: 20),
+          _buildToggleSwitch(),
+          const Text(
+            'Altere entre Endereçar e Movimentar',
+            style: TextStyle(color: Colors.white, fontSize: 14),
+          ),
+          Container(
+            height: 20,
+            alignment: Alignment.center,
+            child: Text(
+              _barcode,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                shadows: [
+                  Shadow(offset: Offset(1.5, 1.5), color: Colors.black26)
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingOverlay() {
+    return Container(
+      color: Colors.black54,
+      child: const Center(
+        child: CircularProgressIndicator(color: Colors.orange),
+      ),
+    );
+  }
+
+  Widget _buildProductImage() {
     return Stack(
       alignment: const Alignment(0.80, 0.80),
       children: [
@@ -902,52 +547,189 @@ class _MyHomePageState extends State<MyHomePage> {
           child: CachedNetworkImage(
             imageUrl: _imagePath,
             fit: BoxFit.fill,
+            cacheKey: _sku,
+            memCacheHeight: 200,
+            memCacheWidth: 200,
             imageBuilder: (context, imageProvider) => CircleAvatar(
               backgroundColor: Colors.white,
-              radius: 80.0,
-              child: CircleAvatar(
-                radius: 80,
-                backgroundImage: imageProvider,
-                foregroundColor: Colors.white,
-              ),
+              radius: 80,
+              backgroundImage: imageProvider,
             ),
-            progressIndicatorBuilder: (context, imageError, downloadProgress) =>
-                CircularProgressIndicator(value: downloadProgress.progress),
+            placeholder: (context, url) => const CircularProgressIndicator(),
             errorWidget: (context, url, error) => CircleAvatar(
               backgroundColor: Colors.red,
-              radius: 82.0,
-              child: CircleAvatar(
-                radius: 80,
-                backgroundImage: AssetImage('assets/images/nopic.png'),
-                foregroundColor: Colors.white,
-              ),
+              radius: 80,
+              child: Image.asset('assets/images/nopic.png'),
             ),
           ),
         ),
-        _sku.isNotEmpty
-            ? Container(
-                margin: const EdgeInsets.all(3.0),
-                padding: const EdgeInsets.all(3.0),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.all(Radius.circular(5.0)),
-                  border: Border.all(
-                      width: 1.0, color: Colors.white10.withValues(alpha: 0.7)),
-                  color: Colors.white70.withValues(alpha: 0.5),
-                ),
-                // ignore: unnecessary_null_comparison
-                child: Text(
-                  "$_sku\n$_location",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 20.0,
-                      fontWeight: FontWeight.bold,
-                      fontStyle: FontStyle.italic),
-                ),
-              )
-            : Container(),
+        if (_sku.isNotEmpty) _buildProductBadge(),
       ],
     );
-    // ...
+  }
+
+  Widget _buildProductBadge() {
+    return Container(
+      margin: const EdgeInsets.all(3),
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(5),
+        border: Border.all(color: Colors.white10),
+        color: Colors.white54,
+      ),
+      child: Text(
+        '$_sku\n$_location',
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: Colors.black,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          fontStyle: FontStyle.italic,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProductTitle() {
+    return Text(
+      _title,
+      textAlign: TextAlign.center,
+      style: const TextStyle(
+        height: 2,
+        fontSize: 15,
+        color: Colors.white,
+        shadows: [
+          Shadow(offset: Offset(-0.5, -0.5), color: Colors.grey),
+          Shadow(offset: Offset(0.5, -0.5), color: Colors.grey),
+          Shadow(offset: Offset(0.5, 0.5), color: Colors.grey),
+          Shadow(offset: Offset(-0.5, 0.5), color: Colors.grey),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildItemField() {
+    return TextField(
+      focusNode: _focusNodeItem,
+      controller: _scanController,
+      keyboardType: TextInputType.none,
+      autofocus: true,
+      onChanged: _onItemChanged,
+      onTap: _hideKeyboard,
+      style: const TextStyle(color: Colors.white),
+      textAlign: TextAlign.center,
+      decoration: InputDecoration(
+        labelText: 'Item',
+        labelStyle: const TextStyle(color: Colors.grey),
+        isDense: true,
+        contentPadding: const EdgeInsets.all(10),
+        border: const OutlineInputBorder(),
+        enabledBorder: const OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.grey, width: 0.2),
+        ),
+        focusedBorder: const OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.blueGrey),
+        ),
+        prefixIcon: IconButton(
+          icon: const Icon(Icons.barcode_reader, color: Colors.grey, size: 24),
+          onPressed: () => _scanBarcode(false),
+        ),
+        suffixIcon: IconButton(
+          icon: const Icon(Icons.delete_rounded, color: Colors.grey, size: 24),
+          onPressed: () {
+            _scanController.clear();
+            _focusNodeItem.requestFocus();
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAddressField() {
+    return TextField(
+      focusNode: _focusNodeAddress,
+      controller: _scanAddController,
+      keyboardType: TextInputType.none,
+      onChanged: _onAddressChanged,
+      onTap: _hideKeyboard,
+      style: const TextStyle(color: Colors.white),
+      textAlign: TextAlign.center,
+      decoration: InputDecoration(
+        labelText: 'Endereço',
+        labelStyle: const TextStyle(color: Colors.grey),
+        isDense: true,
+        contentPadding: const EdgeInsets.all(10),
+        border: const OutlineInputBorder(),
+        enabledBorder: const OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.grey, width: 0.2),
+        ),
+        focusedBorder: const OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.blueGrey),
+        ),
+        prefixIcon: IconButton(
+          icon: const Icon(Icons.barcode_reader, color: Colors.grey, size: 24),
+          onPressed: () => _scanQRcode(true),
+        ),
+        suffixIcon: IconButton(
+          icon: const Icon(Icons.delete_rounded, color: Colors.grey, size: 24),
+          onPressed: () {
+            _scanAddController.clear();
+            _focusNodeAddress.requestFocus();
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNewAddressField() {
+    return TextField(
+      focusNode: _focusNodeNewAddress,
+      controller: _scanController,
+      keyboardType: TextInputType.none,
+      onTap: _hideKeyboard,
+      style: const TextStyle(color: Colors.white),
+      textAlign: TextAlign.center,
+      decoration: const InputDecoration(
+        labelText: 'Novo Endereço',
+        labelStyle: TextStyle(color: Colors.grey),
+        isDense: true,
+        contentPadding: EdgeInsets.all(10),
+        border: OutlineInputBorder(),
+        enabledBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.grey, width: 0.2),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.blueGrey),
+        ),
+        prefixIcon: Icon(Icons.barcode_reader, color: Colors.grey, size: 24),
+        suffixIcon: Icon(Icons.delete_rounded, color: Colors.grey, size: 24),
+      ),
+    );
+  }
+
+  Widget _buildToggleSwitch() {
+    return Center(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CustomCheckBox(
+            value: _isChecked,
+            shouldShowBorder: true,
+            borderColor: Colors.blueAccent,
+            checkedFillColor: Colors.blueAccent,
+            uncheckedFillColor: Colors.blueGrey,
+            borderRadius: 6,
+            borderWidth: 1,
+            checkBoxSize: 35,
+            onChanged: (val) => setState(() => _isChecked = val),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            _isChecked ? 'Movimentar' : 'Endereçar',
+            style: const TextStyle(color: Colors.white, fontSize: 20),
+          ),
+        ],
+      ),
+    );
   }
 }

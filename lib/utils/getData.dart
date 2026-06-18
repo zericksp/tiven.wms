@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -39,9 +38,10 @@ Future<String> getToken(String appId) async {
   }
 }
 
-Future<void> updateAddressStock(
+Future<String> updateAddressStock(
     BuildContext context, String location, String sku) async {
   MySqlConnection? conn;
+  String response = "";
 
   try {
     conn = await MySqlConnection.connect(settings);
@@ -69,11 +69,14 @@ Future<void> updateAddressStock(
       }
       showSnackbar(context,
           "Nenhuma linha foi atualizada. Verifique os valores.", Colors.red);
+      response = "Item: $sku - Localização [$location] não foi atualizado.\n";
     } else {
       if (kDebugMode) {
         print("✅ ${result.affectedRows} linha(s) atualizada(s)!");
       }
       showSnackbar(context, "Item atualizado com sucesso!", Colors.orange);
+      response =
+          "Item: $sku - Localização [$location] atualizado com sucesso.\n";
     }
   } catch (e, stacktrace) {
     if (kDebugMode) {
@@ -81,6 +84,7 @@ Future<void> updateAddressStock(
       print(stacktrace);
     }
     showSnackbar(context, "Erro ao atualizar produto: $e", Colors.red);
+    response = "Item: $sku - Localização [$location] atualizado com sucesso.\n";
   } finally {
     if (conn != null) {
       await conn.close();
@@ -89,11 +93,13 @@ Future<void> updateAddressStock(
       }
     }
   }
+  return response;
 }
 
-Future<void> changeItemQtyAddress(
+Future<String> changeItemQtyAddress(
     BuildContext context, String location, String sku, int qty) async {
   MySqlConnection? conn;
+  String response = "";
 
   try {
     conn = await MySqlConnection.connect(settings);
@@ -122,16 +128,22 @@ Future<void> changeItemQtyAddress(
       }
       showSnackbar(context,
           "Nenhuma linha foi atualizada. Verifique os valores.", Colors.red);
+      response =
+          "Item: $sku - Qty [$qty] e Localização [$location] não foi atualizado.\n";
     } else {
       if (kDebugMode) {
         print("✅ ${result.affectedRows} linha(s) atualizada(s)!");
       }
       showSnackbar(context, "Item atualizado com sucesso!", Colors.orange);
+      response =
+          "Item: $sku - Qty [$qty] e Localização [$location] atualizado com sucesso.\n";
     }
   } catch (e, stacktrace) {
     if (kDebugMode) {
       print("❌ Erro ao executar a operação: $e");
       print(stacktrace);
+      response =
+          "Item: $sku - Qty [$qty] e Localização [$location] não foi atualizado.\n";
     }
     showSnackbar(context, "Erro ao atualizar produto: $e", Colors.red);
   } finally {
@@ -142,50 +154,71 @@ Future<void> changeItemQtyAddress(
       }
     }
   }
+  return response;
 }
 
 Future<String> getProductByCode(String itemCode, String token) async {
-  var headers = {
-    'Accept': 'application/json',
-    'Authorization': 'Bearer $token',
-    'Cookie': 'PHPSESSID=qp1pntfav25l6phnd0bc4hulq6'
-  };
-  var request = http.Request('GET',
-      Uri.parse("https://www.bling.com.br/Api/v3/produtos?codigo=$itemCode"));
+  var requestDB = http.Request(
+      'GET',
+      Uri.parse(
+          'https://www.tiven.com.br/crud/getProductByCode.php?CODE=$itemCode'));
 
-  request.headers.addAll(headers);
+  // Envia a requisição e aguarda a resposta
+  http.StreamedResponse response = await requestDB.send();
+  timeToTry = timeToTry * 2; // Dobra o tempo de espera a cada tentativa
 
-  while (tried < 5 && code != 200) {
-    // Aguarda 1 segundo antes de tentar novamente
-    await Future.delayed(Duration(seconds: timeToTry));
-    tried++;
+  // Se a resposta for bem-sucedida, processa os dados
+  if (response.statusCode == 200) {
     code = 200;
     if (kDebugMode) {
-      print("Tentativa: $tried");
+      final responseBody = await response.stream.bytesToString();
+      print(responseBody);
+      return responseBody;
     }
-    if (kDebugMode) {
-      print("Tentando novamente em $timeToTry segundos...");
-    }
-    // Envia a requisição e aguarda a resposta
-    http.StreamedResponse response = await request.send();
-    timeToTry = timeToTry * 2; // Dobra o tempo de espera a cada tentativa
+  } else {
+    var headers = {
+      'Accept': 'application/json',
+      'Authorization': 'Bearer $token',
+      'Cookie': 'PHPSESSID=qp1pntfav25l6phnd0bc4hulq6'
+    };
+    var request = http.Request('GET',
+        Uri.parse("https://www.bling.com.br/Api/v3/produtos?codigo=$itemCode"));
 
-    // Se a resposta for bem-sucedida, processa os dados
-    if (response.statusCode == 200) {
-      code = 200;
+    request.headers.addAll(headers);
+    code = 0;
+    tried = 1;
+    while (tried < 5 && code != 200) {
+      // Aguarda 1 segundo antes de tentar novamente
+      await Future.delayed(Duration(seconds: timeToTry));
+      tried++;
+
       if (kDebugMode) {
-        final responseBody = await response.stream.bytesToString();
-        print(responseBody);
-        return responseBody;
+        print("Tentativa: $tried");
       }
-    } else {
       if (kDebugMode) {
-        print(response.reasonPhrase);
+        print("Tentando novamente em $timeToTry segundos...");
       }
-      return Future.error("Failed to fetch product: ${response.reasonPhrase}");
+      // Envia a requisição e aguarda a resposta
+      http.StreamedResponse response = await request.send();
+      timeToTry = timeToTry * 2; // Dobra o tempo de espera a cada tentativa
+
+      // Se a resposta for bem-sucedida, processa os dados
+      if (response.statusCode == 200) {
+        code = 200;
+        if (kDebugMode) {
+          final responseBody = await response.stream.bytesToString();
+          print(responseBody);
+          return responseBody;
+        }
+      } else {
+        if (kDebugMode) {
+          print(response.reasonPhrase);
+        }
+        return Future.error(
+            "Failed to fetch product: ${response.reasonPhrase}");
+      }
     }
   }
-
   throw Exception("Unexpected error occurred while fetching product.");
 }
 

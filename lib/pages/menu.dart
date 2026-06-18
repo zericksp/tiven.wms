@@ -1,1606 +1,983 @@
 import 'dart:convert';
-import 'package:device_info_plus/device_info_plus.dart';
+import 'dart:ui';
+
 import 'package:animated_background/animated_background.dart';
-import 'package:auto_size_text/auto_size_text.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:tiven/pages/inventory.dart';
-import 'package:tiven/pages/picking_nfe.dart';
+import 'package:flutter_reorderable_grid_view/widgets/widgets.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import 'package:tiven/pages/conference.dart';
+import 'package:tiven/pages/daily_prod.dart';
+import 'package:tiven/pages/inventory.dart';
 import 'package:tiven/pages/labels.dart';
 import 'package:tiven/pages/orders.dart';
 import 'package:tiven/pages/picking.dart';
+import 'package:tiven/pages/picking_nfe.dart';
 import 'package:tiven/pages/repos.dart';
+import 'package:tiven/pages/returns.dart';
 import 'package:tiven/pages/splash.dart';
 import 'package:tiven/pages/updproduct.dart';
 import 'package:tiven/pages/vipcapas.dart';
-import 'package:tiven/pages/daily_prod.dart';
 import 'package:tiven/pages/vtex.dart';
-import 'package:tiven/widgets/lastProduced.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tiven/utils/next_screen_dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:tiven/pages/returns.dart';
-import 'conference.dart';
+import 'package:tiven/widgets/lastProduced.dart';
 
-class MenuScreen extends StatelessWidget {
-  MenuScreen({
-    super.key,
-    required this.title,
-    required this.data,
-    // required this.idUser, required this.username,required this.firstname,
-    // required this.lastname, required this.provider, required this.picture, required this.email,
-  });
-  final String title;
-  List<String> data;
+// ─────────────────────────────────────────────────────────────────────────────
+// Categorias de cor
+// ─────────────────────────────────────────────────────────────────────────────
+enum MenuCategory {
+  receiving,
+  picking,
+  fiscal,
+  returns,
+  company,
+  production,
+  support,
+}
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: "Menu",
-      theme: ThemeData(
-          primarySwatch: Colors.grey, primaryColor: Colors.deepOrange),
-      home: MenuPage(title: title, data: data),
-    );
+extension MenuCategoryStyle on MenuCategory {
+  Color get accent {
+    switch (this) {
+      case MenuCategory.receiving:
+        return const Color(0xFF4A9EFF);
+      case MenuCategory.picking:
+        return const Color(0xFF4ECB71);
+      case MenuCategory.fiscal:
+        return const Color(0xFFFFBB33);
+      case MenuCategory.returns:
+        return const Color(0xFFFF5252);
+      case MenuCategory.company:
+        return const Color(0xFFAB7EFF);
+      case MenuCategory.production:
+        return const Color(0xFF26C6DA);
+      case MenuCategory.support:
+        return const Color(0xFF78909C);
+    }
+  }
+
+  Color get bg => accent.withValues(alpha: 0.08);
+  Color get glow => accent.withValues(alpha: 0.25);
+  String get displayLabel {
+    switch (this) {
+      case MenuCategory.receiving:
+        return 'Recebimento';
+      case MenuCategory.picking:
+        return 'Colheita';
+      case MenuCategory.fiscal:
+        return 'Fiscal';
+      case MenuCategory.returns:
+        return 'Devolução';
+      case MenuCategory.company:
+        return 'Empresas';
+      case MenuCategory.production:
+        return 'Produção';
+      case MenuCategory.support:
+        return 'Suporte';
+    }
   }
 }
 
-// ignore: must_be_immutable
-class MenuPage extends StatefulWidget {
-  List<String> data = [];
-  String title;
+// ─────────────────────────────────────────────────────────────────────────────
+// Modelo
+// ─────────────────────────────────────────────────────────────────────────────
+class MenuItemConfig {
+  final String id;
+  final IconData icon;
+  final String label;
+  final String sublabel;
+  final MenuCategory category;
+  final Widget Function(BuildContext) pageBuilder;
 
-  MenuPage({
-    super.key,
-    required this.title,
-    required this.data,
-    // required this.idUser,
-    // required this.username,
-    // required this.firstname,
-    // required this.lastname,
-    // required this.provider,
-    // required this.picture,
-    // required this.email,
+  const MenuItemConfig({
+    required this.id,
+    required this.icon,
+    required this.label,
+    required this.sublabel,
+    required this.category,
+    required this.pageBuilder,
   });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Entry point
+// ─────────────────────────────────────────────────────────────────────────────
+class MenuScreen extends StatelessWidget {
+  const MenuScreen({super.key, required this.title, required this.data});
+  final String title;
+  final List<String> data;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'Menu',
+        theme: ThemeData(
+            primarySwatch: Colors.grey, primaryColor: Colors.deepOrange),
+        home: MenuPage(title: title, data: data),
+      );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MenuPage
+// ─────────────────────────────────────────────────────────────────────────────
+class MenuPage extends StatefulWidget {
+  const MenuPage({super.key, required this.title, required this.data});
+  final String title;
+  final List<String> data;
 
   @override
   State<MenuPage> createState() => _MenuPageState();
 }
 
 class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
-  _launchURL() async {
-    const url = 'tel:32451300';
-    if (await canLaunchUrl(url as Uri)) {
-      await launchUrl(url as Uri);
-    } else {
-      throw 'Não foi possível efetuar a chamada';
-    }
-  }
+  static final DeviceInfoPlugin _deviceInfoPlugin = DeviceInfoPlugin();
+  Map<String, dynamic> _deviceData = {};
 
-  late var data;
-  final int _qrcode = 0;
-  late final int _scanQRcode = 0;
-  late String qrcodeScanRes = "";
-  String _barcode = "";
-  double width = 0;
-  double height = 0;
-  static final DeviceInfoPlugin deviceInfoPlugin = DeviceInfoPlugin();
+  // Lista de 14 itens (índices 0–13)
+  late List<MenuItemConfig> _items;
+  bool _editMode = false;
 
-  Map<String, dynamic> _deviceData = <String, dynamic>{};
+  // ScrollController compartilhado entre ReorderableBuilder e GridView
+  final _scrollController = ScrollController();
+  final _gridKey = GlobalKey();
 
+  static const _prefsKey = 'menu_order_v4';
+
+  // ── Catálogo padrão — 14 itens, índices 0 a 13 ───────────────────────────
+  List<MenuItemConfig> get _catalog => [
+        MenuItemConfig(
+          // 0
+          id: 'conferir',
+          icon: Icons.assignment_turned_in_outlined,
+          label: 'Conferir', sublabel: 'Recebimento',
+          category: MenuCategory.receiving,
+          pageBuilder: (_) => Conference(
+              idUser: widget.data[0], user: widget.data[1], photos: []),
+        ),
+        MenuItemConfig(
+          // 1
+          id: 'colheita_lote',
+          icon: Icons.add_shopping_cart_sharp,
+          label: 'Colheita', sublabel: 'Por Lote',
+          category: MenuCategory.picking,
+          pageBuilder: (_) =>
+              Picking(title: widget.title, idUser: widget.data[0]),
+        ),
+        MenuItemConfig(
+          // 2
+          id: 'reposicao',
+          icon: Icons.autorenew,
+          label: 'Reposição', sublabel: 'Separados',
+          category: MenuCategory.picking,
+          pageBuilder: (_) => Repositing(
+              idUser: widget.data[0],
+              username: widget.data[1],
+              title: 'Reposição'),
+        ),
+        MenuItemConfig(
+          // 3
+          id: 'endereco',
+          icon: Icons.location_on_outlined,
+          label: 'Endereço', sublabel: 'Localização',
+          category: MenuCategory.receiving,
+          pageBuilder: (_) => UpdateProd(),
+        ),
+        MenuItemConfig(
+          // 4
+          id: 'colheita_nfe',
+          icon: Icons.shopping_cart_checkout,
+          label: 'Colheita', sublabel: 'Discreta NFe',
+          category: MenuCategory.picking,
+          pageBuilder: (_) => Picking_Nfe(title: '', username: widget.data[1]),
+        ),
+        MenuItemConfig(
+          // 5
+          id: 'colheita_pedido',
+          icon: Icons.shopping_cart_outlined,
+          label: 'Colheita', sublabel: 'Discreta Pedido',
+          category: MenuCategory.picking,
+          pageBuilder: (_) =>
+              Picking(title: widget.title, idUser: widget.data[0]),
+        ),
+        MenuItemConfig(
+          // 6
+          id: 'nota_fiscal',
+          icon: Icons.article_outlined,
+          label: 'Nota Fiscal', sublabel: 'Emissão',
+          category: MenuCategory.fiscal,
+          pageBuilder: (_) => Orders(idUser: widget.data[0]),
+        ),
+        MenuItemConfig(
+          // 7
+          id: 'balanco',
+          icon: Icons.all_inclusive_sharp,
+          label: 'Balanço', sublabel: 'Geral',
+          category: MenuCategory.fiscal,
+          pageBuilder: (_) => Inventory(idUser: widget.data[0]),
+        ),
+        MenuItemConfig(
+          // 8
+          id: 'devolucao',
+          icon: Icons.undo_rounded,
+          label: 'Devolução', sublabel: 'Fabricante',
+          category: MenuCategory.returns,
+          pageBuilder: (_) => Returns(idUser: widget.data[0], user: ''),
+        ),
+        MenuItemConfig(
+          // 9
+          id: 'ajuda',
+          icon: Icons.help_center_outlined,
+          label: 'Ajuda', sublabel: 'Manual e dicas',
+          category: MenuCategory.support,
+          pageBuilder: (_) => LastProducedWidget(
+              title: 'Manual',
+              username: widget.data[1],
+              idUser: widget.data[0]),
+        ),
+        MenuItemConfig(
+          // 10
+          id: 'eladecora',
+          icon: Icons.store_outlined,
+          label: 'Eladecora', sublabel: 'Separação',
+          category: MenuCategory.company,
+          pageBuilder: (_) =>
+              Vtex(username: widget.data[1], idUser: widget.data[0], title: ''),
+        ),
+        MenuItemConfig(
+          // 11
+          id: 'vipcapas',
+          icon: Icons.cases_outlined,
+          label: 'Vip Capas', sublabel: 'Separação',
+          category: MenuCategory.company,
+          pageBuilder: (_) =>
+              Vipcapas(idUser: widget.data[0], username: widget.data[1]),
+        ),
+        MenuItemConfig(
+          // 12
+          id: 'etiquetas',
+          icon: Icons.label_outline,
+          label: 'Etiquetas', sublabel: 'Emissão',
+          category: MenuCategory.fiscal,
+          pageBuilder: (_) => Labels(title: 'Etiquetas', key: null, text: ''),
+        ),
+        MenuItemConfig(
+          // 13
+          id: 'producao',
+          icon: Icons.content_cut_outlined,
+          label: 'Produção', sublabel: 'Do Dia',
+          category: MenuCategory.production,
+          pageBuilder: (_) => DailyProd(),
+        ),
+      ];
+
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
-    _initialize(); // Chama a função sem `await`
-    incrementQrcode();
-  }
-
-  void _initialize() async {
-    await initPlatformState(); // Agora pode usar `await`
-    checkTrigger(); // Chama a verificação do scanner depois
-  }
-
-  /// Função para buscar no banco MySQL se o modelo tem scanner com gatilho
-  Future<bool> fetchTriggerFromDatabase(String brand, String model) async {
-    const String apiUrl = "https://tiven.com.br/picking/checkTriggerDevice.php";
-    // const String apiUrl = "localhost/tiven.com.br/picking/checkTriggerDevice.php";
-
-    try {
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        body: {'brand': brand, 'model': model},
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return data['hasTrigger'] ==
-            true; // JSON esperado: {"hasTrigger": true/false}
-      } else {
-        if (kDebugMode) {
-          print("Erro ao acessar o banco: ${response.statusCode}");
-        }
-        return false;
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print("Erro na requisição: $e");
-      }
-      return false;
-    }
-  }
-
-  /// Obtém se o dispositivo tem scanner armazenado no SharedPreferences
-  Future<bool> getHasTrigger() async {
-    bool blStored = false;
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    // Recupera o valor e verifica se é um booleano
-    var storedValue = prefs.get('trigger');
-    if (storedValue == true) {
-      blStored = true; // Retorna o valor correto se for um bool
-    } else if (storedValue == false) {
-      blStored = false;
-    }
-    return blStored;
-  }
-
-  /// Define no SharedPreferences se o dispositivo tem scanner
-  Future<void> setHasTrigger(bool blTrigger) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('trigger', blTrigger);
-    if (mounted) {
-      setState(() {}); // Atualiza a UI se o widget ainda estiver ativo
-    }
-  }
-
-  /// Verifica se o dispositivo tem scanner, buscando no SharedPreferences ou na API
-  void checkTrigger() async {
-    // setHasTrigger(false); // Reseta o valor para false
-    bool blTrigger = false;
-    // Verifica se a chave existe antes de acessar
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    if (prefs.containsKey('trigger')) {
-      blTrigger = await getHasTrigger();
-    } else {
-      // Consulta o banco de dados MySQL
-      blTrigger = await fetchTriggerFromDatabase(
-        _deviceData['brand'] ?? '',
-        _deviceData['model'] ?? '',
-      );
-      await setHasTrigger(blTrigger);
-    }
-  }
-
-  /// Obtém as informações do dispositivo
-  Future<void> initPlatformState() async {
-    var deviceData = <String, dynamic>{};
-
-    try {
-      if (kIsWeb) {
-        deviceData = _readWebBrowserInfo(await deviceInfoPlugin.webBrowserInfo);
-      } else {
-        deviceData = switch (defaultTargetPlatform) {
-          TargetPlatform.android =>
-            _readAndroidBuildData(await deviceInfoPlugin.androidInfo),
-          TargetPlatform.iOS =>
-            _readIosDeviceInfo(await deviceInfoPlugin.iosInfo),
-          TargetPlatform.linux =>
-            _readLinuxDeviceInfo(await deviceInfoPlugin.linuxInfo),
-          TargetPlatform.windows =>
-            _readWindowsDeviceInfo(await deviceInfoPlugin.windowsInfo),
-          TargetPlatform.macOS =>
-            _readMacOsDeviceInfo(await deviceInfoPlugin.macOsInfo),
-          TargetPlatform.fuchsia => <String, dynamic>{
-              'Error:': 'Fuchsia platform isn\'t supported'
-            },
-        };
-      }
-    } on PlatformException {
-      deviceData = <String, dynamic>{
-        'Error:': 'Failed to get platform version.'
-      };
-    }
-
-    if (!mounted) return;
-
-    setState(() {
-      _deviceData = deviceData;
-    });
-  }
-
-  Map<String, dynamic> _readAndroidBuildData(AndroidDeviceInfo build) {
-    return <String, dynamic>{
-      'version.securityPatch': build.version.securityPatch,
-      'version.sdkInt': build.version.sdkInt,
-      'version.release': build.version.release,
-      'version.previewSdkInt': build.version.previewSdkInt,
-      'version.incremental': build.version.incremental,
-      'version.codename': build.version.codename,
-      'version.baseOS': build.version.baseOS,
-      'board': build.board,
-      'bootloader': build.bootloader,
-      'brand': build.brand,
-      'device': build.device,
-      'display': build.display,
-      'fingerprint': build.fingerprint,
-      'hardware': build.hardware,
-      'host': build.host,
-      'id': build.id,
-      'manufacturer': build.manufacturer,
-      'model': build.model,
-      'product': build.product,
-      'name': build.name,
-      'supported32BitAbis': build.supported32BitAbis,
-      'supported64BitAbis': build.supported64BitAbis,
-      'supportedAbis': build.supportedAbis,
-      'tags': build.tags,
-      'type': build.type,
-      'isPhysicalDevice': build.isPhysicalDevice,
-      'systemFeatures': build.systemFeatures,
-      'serialNumber': build.serialNumber,
-      'isLowRamDevice': build.isLowRamDevice,
-    };
-  }
-
-  Map<String, dynamic> _readIosDeviceInfo(IosDeviceInfo data) {
-    return <String, dynamic>{
-      'name': data.name,
-      'systemName': data.systemName,
-      'systemVersion': data.systemVersion,
-      'model': data.model,
-      'modelName': data.modelName,
-      'localizedModel': data.localizedModel,
-      'identifierForVendor': data.identifierForVendor,
-      'isPhysicalDevice': data.isPhysicalDevice,
-      'isiOSAppOnMac': data.isiOSAppOnMac,
-      'utsname.sysname:': data.utsname.sysname,
-      'utsname.nodename:': data.utsname.nodename,
-      'utsname.release:': data.utsname.release,
-      'utsname.version:': data.utsname.version,
-      'utsname.machine:': data.utsname.machine,
-    };
-  }
-
-  Map<String, dynamic> _readLinuxDeviceInfo(LinuxDeviceInfo data) {
-    return <String, dynamic>{
-      'name': data.name,
-      'version': data.version,
-      'id': data.id,
-      'idLike': data.idLike,
-      'versionCodename': data.versionCodename,
-      'versionId': data.versionId,
-      'prettyName': data.prettyName,
-      'buildId': data.buildId,
-      'variant': data.variant,
-      'variantId': data.variantId,
-      'machineId': data.machineId,
-    };
-  }
-
-  Map<String, dynamic> _readWebBrowserInfo(WebBrowserInfo data) {
-    return <String, dynamic>{
-      'browserName': data.browserName.name,
-      'appCodeName': data.appCodeName,
-      'appName': data.appName,
-      'appVersion': data.appVersion,
-      'deviceMemory': data.deviceMemory,
-      'language': data.language,
-      'languages': data.languages,
-      'platform': data.platform,
-      'product': data.product,
-      'productSub': data.productSub,
-      'userAgent': data.userAgent,
-      'vendor': data.vendor,
-      'vendorSub': data.vendorSub,
-      'hardwareConcurrency': data.hardwareConcurrency,
-      'maxTouchPoints': data.maxTouchPoints,
-    };
-  }
-
-  Map<String, dynamic> _readMacOsDeviceInfo(MacOsDeviceInfo data) {
-    return <String, dynamic>{
-      'computerName': data.computerName,
-      'hostName': data.hostName,
-      'arch': data.arch,
-      'model': data.model,
-      'modelName': data.modelName,
-      'kernelVersion': data.kernelVersion,
-      'majorVersion': data.majorVersion,
-      'minorVersion': data.minorVersion,
-      'patchVersion': data.patchVersion,
-      'osRelease': data.osRelease,
-      'activeCPUs': data.activeCPUs,
-      'memorySize': data.memorySize,
-      'cpuFrequency': data.cpuFrequency,
-      'systemGUID': data.systemGUID,
-    };
-  }
-
-  Map<String, dynamic> _readWindowsDeviceInfo(WindowsDeviceInfo data) {
-    return <String, dynamic>{
-      'numberOfCores': data.numberOfCores,
-      'computerName': data.computerName,
-      'systemMemoryInMegabytes': data.systemMemoryInMegabytes,
-      'userName': data.userName,
-      'majorVersion': data.majorVersion,
-      'minorVersion': data.minorVersion,
-      'buildNumber': data.buildNumber,
-      'platformId': data.platformId,
-      'csdVersion': data.csdVersion,
-      'servicePackMajor': data.servicePackMajor,
-      'servicePackMinor': data.servicePackMinor,
-      'suitMask': data.suitMask,
-      'productType': data.productType,
-      'reserved': data.reserved,
-      'buildLab': data.buildLab,
-      'buildLabEx': data.buildLabEx,
-      'digitalProductId': data.digitalProductId,
-      'displayVersion': data.displayVersion,
-      'editionId': data.editionId,
-      'installDate': data.installDate,
-      'productId': data.productId,
-      'productName': data.productName,
-      'registeredOwner': data.registeredOwner,
-      'releaseId': data.releaseId,
-      'deviceId': data.deviceId,
-    };
-  }
-
-  // }
-
-  Future setScan() async {
-    var response = await http.get(
-        Uri.parse(
-            "http://www.tiven.com.br/crud/prc_setScanByMachine.php?MACHINE=${_qrcode.toString()}&VALUE=${_barcode.toString()}"),
-        headers: {"Accept": "application/json"});
-    if (kDebugMode) {
-      print(_scanQRcode);
-    }
-    if (response.contentLength! >= 100) {
-      setState(() {
-        var convertDataToJson = json.decode(response.body);
-        data = convertDataToJson['result'];
-        _barcode = data[0]['scn_value'];
-      });
-    } else {
-      setState(() {
-        _barcode = _barcode;
-      });
-    }
-  }
-
-  //set local qrcode
-  incrementQrcode() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(
-      () {
-        prefs.setInt('qrcode', int.tryParse(qrcodeScanRes) ?? 0);
-      },
-    );
-  }
-
-  Future<Future<String?>> _showDialog() async {
-    return showDialog<String>(
-      context: context,
-      barrierDismissible: false, // user must tap button!
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(Radius.circular(16.0))),
-          contentPadding: EdgeInsets.only(top: 20.0),
-          shadowColor: Colors.white,
-          backgroundColor: Colors.black,
-          title: Text(
-            'Tiven ',
-            style: TextStyle(color: Colors.white, fontSize: 15),
-          ),
-          content: SizedBox(
-            height: 70,
-            width: MediaQuery.of(context).size.width,
-            child: SingleChildScrollView(
-              child: ListBody(
-                children: <Widget>[
-                  Text(
-                    textAlign: TextAlign.center,
-                    'Deseja realmente sair?',
-                    style: TextStyle(color: Colors.white, fontSize: 15),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: <Widget>[
-            Expanded(
-              child: ElevatedButton.icon(
-                icon: Icon(
-                  Icons.cancel_presentation,
-                  color: Colors.grey,
-                  size: 25.0,
-                ),
-                style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    alignment: AlignmentGeometry.lerp(
-                        Alignment.center, Alignment.center, 5),
-                    backgroundColor: Colors.black,
-                    minimumSize: Size(100, 50),
-                    maximumSize: Size(140, 50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                      side: BorderSide(
-                        style: BorderStyle.solid,
-                        color: Colors.grey.withValues(alpha: 0.5),
-                        width: 0.2,
-                      ),
-                    ),
-                    shadowColor: Colors.grey,
-                    elevation: 8),
-                label: Text(
-                  "Cancelar",
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade500,
-                  ),
-                ),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-            ),
-            Expanded(
-              child: ElevatedButton.icon(
-                icon: Icon(
-                  Icons.exit_to_app_rounded,
-                  color: Colors.grey,
-                  size: 25.0,
-                ),
-                style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    alignment: AlignmentGeometry.lerp(
-                        Alignment.center, Alignment.center, 5),
-                    backgroundColor: Colors.black,
-                    minimumSize: Size(100, 50),
-                    maximumSize: Size(140, 50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                      side: BorderSide(
-                        style: BorderStyle.solid,
-                        color: Colors.grey.withValues(alpha: 0.5),
-                        width: 0.2,
-                      ),
-                    ),
-                    shadowColor: Colors.grey,
-                    elevation: 8),
-                label: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Sair',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade500,
-                      ),
-                    ),
-                  ],
-                ),
-                onPressed: () {
-                  nextScreenReplace(context, SplashScreen());
-                  logout();
-                },
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  logout() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setBool('logged', false);
-    setState(
-      () {
-        prefs.setBool('logged', false);
-      },
-    );
+    _items = List.from(_catalog);
+    _initialize();
   }
 
   @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _initialize() async {
+    await Future.wait([_initPlatformState(), _loadOrder()]);
+    _checkTrigger();
+    _incrementQrcode();
+  }
+
+  // ── Persistência ──────────────────────────────────────────────────────────
+  Future<void> _loadOrder() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_prefsKey);
+    if (raw == null) return;
+    try {
+      final savedIds = List<String>.from(json.decode(raw));
+      final byId = {for (final i in _catalog) i.id: i};
+      final reordered =
+          savedIds.where(byId.containsKey).map((id) => byId[id]!).toList();
+      final savedSet = savedIds.toSet();
+      for (final item in _catalog) {
+        if (!savedSet.contains(item.id)) reordered.add(item);
+      }
+      if (mounted) setState(() => _items = reordered);
+    } catch (_) {}
+  }
+
+  Future<void> _saveOrder() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+        _prefsKey, json.encode(_items.map((e) => e.id).toList()));
+  }
+
+  // ── Device info / trigger / qrcode ───────────────────────────────────────
+  void _checkTrigger() async {
+    final prefs = await SharedPreferences.getInstance();
+    bool hasTrigger;
+    if (prefs.containsKey('trigger')) {
+      hasTrigger = prefs.getBool('trigger') ?? false;
+    } else {
+      hasTrigger = await _fetchTrigger(
+          _deviceData['brand'] ?? '', _deviceData['model'] ?? '');
+      await prefs.setBool('trigger', hasTrigger);
+    }
+    if (mounted) setState(() {});
+  }
+
+  Future<bool> _fetchTrigger(String brand, String model) async {
+    try {
+      final r = await http.post(
+        Uri.parse('https://tiven.com.br/picking/checkTriggerDevice.php'),
+        body: {'brand': brand, 'model': model},
+      );
+      if (r.statusCode == 200) return json.decode(r.body)['hasTrigger'] == true;
+    } catch (e) {
+      if (kDebugMode) print(e);
+    }
+    return false;
+  }
+
+  Future<void> _incrementQrcode() async =>
+      (await SharedPreferences.getInstance()).setInt('qrcode', 0);
+
+  Future<void> _initPlatformState() async {
+    Map<String, dynamic> d = {};
+    try {
+      if (kIsWeb) {
+        d = _webInfo(await _deviceInfoPlugin.webBrowserInfo);
+      } else {
+        d = switch (defaultTargetPlatform) {
+          TargetPlatform.android =>
+            _androidInfo(await _deviceInfoPlugin.androidInfo),
+          TargetPlatform.iOS => _iosInfo(await _deviceInfoPlugin.iosInfo),
+          TargetPlatform.linux => _linuxInfo(await _deviceInfoPlugin.linuxInfo),
+          TargetPlatform.windows =>
+            _windowsInfo(await _deviceInfoPlugin.windowsInfo),
+          TargetPlatform.macOS => _macInfo(await _deviceInfoPlugin.macOsInfo),
+          _ => {'Error': 'Platform not supported'},
+        };
+      }
+    } on PlatformException {
+      d = {'Error': 'Failed'};
+    }
+    if (!mounted) return;
+    setState(() => _deviceData = d);
+  }
+
+  Map<String, dynamic> _androidInfo(AndroidDeviceInfo b) => {
+        'brand': b.brand,
+        'model': b.model,
+        'manufacturer': b.manufacturer,
+        'version.sdkInt': b.version.sdkInt,
+        'version.release': b.version.release,
+        'device': b.device,
+        'isPhysicalDevice': b.isPhysicalDevice,
+        'board': b.board,
+        'bootloader': b.bootloader,
+        'display': b.display,
+        'fingerprint': b.fingerprint,
+        'hardware': b.hardware,
+        'host': b.host,
+        'id': b.id,
+        'product': b.product,
+        'name': b.name,
+        'supported32BitAbis': b.supported32BitAbis,
+        'supported64BitAbis': b.supported64BitAbis,
+        'supportedAbis': b.supportedAbis,
+        'tags': b.tags,
+        'type': b.type,
+        'systemFeatures': b.systemFeatures,
+        'isLowRamDevice': b.isLowRamDevice,
+      };
+  Map<String, dynamic> _iosInfo(IosDeviceInfo d) => {
+        'name': d.name,
+        'systemName': d.systemName,
+        'systemVersion': d.systemVersion,
+        'model': d.model,
+        'modelName': d.modelName,
+        'isPhysicalDevice': d.isPhysicalDevice,
+      };
+  Map<String, dynamic> _linuxInfo(LinuxDeviceInfo d) =>
+      {'name': d.name, 'version': d.version, 'prettyName': d.prettyName};
+  Map<String, dynamic> _webInfo(WebBrowserInfo d) =>
+      {'browserName': d.browserName.name, 'userAgent': d.userAgent};
+  Map<String, dynamic> _macInfo(MacOsDeviceInfo d) => {
+        'computerName': d.computerName,
+        'model': d.model,
+        'modelName': d.modelName,
+      };
+  Map<String, dynamic> _windowsInfo(WindowsDeviceInfo d) => {
+        'computerName': d.computerName,
+        'productName': d.productName,
+        'buildNumber': d.buildNumber,
+        'numberOfCores': d.numberOfCores,
+        'systemMemoryInMegabytes': d.systemMemoryInMegabytes,
+        'userName': d.userName,
+        'majorVersion': d.majorVersion,
+        'minorVersion': d.minorVersion,
+        'platformId': d.platformId,
+        'csdVersion': d.csdVersion,
+        'servicePackMajor': d.servicePackMajor,
+        'servicePackMinor': d.servicePackMinor,
+        'suitMask': d.suitMask,
+        'productType': d.productType,
+        'reserved': d.reserved,
+        'buildLab': d.buildLab,
+        'buildLabEx': d.buildLabEx,
+        'digitalProductId': d.digitalProductId,
+        'displayVersion': d.displayVersion,
+        'editionId': d.editionId,
+        'installDate': d.installDate,
+        'productId': d.productId,
+        'registeredOwner': d.registeredOwner,
+        'releaseId': d.releaseId,
+        'deviceId': d.deviceId,
+      };
+
+  Future<void> _logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('logged', false);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _launchPhone() async {
+    final uri = Uri.parse('tel:32451300');
+    if (await canLaunchUrl(uri)) await launchUrl(uri);
+  }
+
+  Future<void> _showExitDialog() async => showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+          child: AlertDialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            contentPadding: const EdgeInsets.only(top: 20),
+            backgroundColor: Colors.grey.shade900.withValues(alpha: 0.95),
+            title: const Text('Tiven',
+                style: TextStyle(color: Colors.white, fontSize: 15)),
+            content: const SizedBox(
+              height: 70,
+              child: Center(
+                child: Text('Deseja realmente sair?',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white70, fontSize: 15)),
+              ),
+            ),
+            actions: [
+              _dialogBtn(Icons.cancel_presentation, 'Cancelar',
+                  () => Navigator.of(ctx).pop()),
+              _dialogBtn(Icons.exit_to_app_rounded, 'Sair', () {
+                nextScreenReplace(context, SplashScreen());
+                _logout();
+              }),
+            ],
+          ),
+        ),
+      );
+
+  Widget _dialogBtn(IconData icon, String label, VoidCallback onPressed) =>
+      Expanded(
+        child: ElevatedButton.icon(
+          icon: Icon(icon, color: Colors.grey, size: 22),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.black,
+            minimumSize: const Size(100, 48),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+              side: BorderSide(color: Colors.grey.withValues(alpha: 0.4)),
+            ),
+          ),
+          label: Text(label,
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade400)),
+          onPressed: onPressed,
+        ),
+      );
+
+  // ── Build ─────────────────────────────────────────────────────────────────
+  @override
   Widget build(BuildContext context) {
-    width = MediaQuery.of(context).size.width * 0.9;
-    height = MediaQuery.of(context).size.height * 0.9;
+    final deviceLabel = _deviceData.keys.length >= 20
+        ? '${_deviceData['manufacturer']?.toString().toUpperCase()} — '
+            '${_deviceData['model']?.toString().toUpperCase()}'
+        : null;
+
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        foregroundColor: Colors.white,
-        title: Row(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 2, 0, 0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    'tiven',
-                    textAlign: TextAlign.left,
-                    style: TextStyle(
-                        fontSize: 22,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w100),
-                  ),
-                  SizedBox(
-                    width: 25,
-                  ),
-                  Image.asset(
-                    'assets/images/logoVt.png',
-                    width: 18,
-                    height: 18,
-                  ),
-                  SizedBox(
-                    width: 8,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: Colors.black,
-      ),
-      drawer: Drawer(
-        backgroundColor: Colors.grey,
-        child: ListView(
-          children: <Widget>[
-            DrawerHeader(
-              child: Row(
-                children: <Widget>[
-                  Row(
-                    children: <Widget>[
-                      Container(
-                        width: 65.0,
-                        height: 65.0,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          image: DecorationImage(
-                            fit: BoxFit.fill,
-                            image: NetworkImage(
-                                "https://www.pedimus.com.br/home/img/rick.png"),
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Text("Usuário : ${widget.data[0].toString()}"),
-                            Text("Nome : ${widget.data[1]}"),
-                            Text("Sobrenome : ${widget.data[2]}"),
-                          ],
-                        ),
-                      ),
-                    ],
-                  )
-                ],
-              ),
-            ),
-            ListTile(
-              title: Text('Seu perfil'),
-              onTap: () {},
-            ),
-            ListTile(
-              title: Text('Seu contrato'),
-              onTap: () {},
-            ),
-            ListTile(
-              title: Text('Chamar Serviço ao Cliente'),
-              onTap: () {
-                _launchURL();
-              },
-            ),
-            Divider(),
-            ListTile(
-              title: Text('Sobre nós'),
-              onTap: () {},
-            ),
-            Divider(),
-            ListTile(
-              title: Text('Sair'),
-              onTap: () {
-                _showDialog();
-              },
-            ),
-          ],
-        ),
-      ),
+      appBar: _buildAppBar(),
+      drawer: _buildDrawer(),
       body: AnimatedBackground(
         behaviour: RandomParticleBehaviour(
           options: ParticleOptions(
-              spawnMaxRadius: 11,
-              spawnMinSpeed: 11.00,
-              particleCount: 70,
-              spawnMaxSpeed: 22,
-              minOpacity: 0.2,
-              opacityChangeRate: 0.25,
-              spawnOpacity: 0.2,
-              maxOpacity: 0.2,
-              baseColor: Colors.grey,
-              image: Image(
-                image: AssetImage(
-                  'assets/images/logo50p.png',
-                ),
-              )),
+            spawnMaxRadius: 11,
+            spawnMinSpeed: 11.0,
+            particleCount: 70,
+            spawnMaxSpeed: 22,
+            minOpacity: 0.2,
+            opacityChangeRate: 0.25,
+            spawnOpacity: 0.2,
+            maxOpacity: 0.2,
+            baseColor: Colors.grey.shade400,
+            image: const Image(image: AssetImage('assets/images/logo50p.png')),
+          ),
         ),
         vsync: this,
         child: Center(
           child: AnimatedContainer(
-            duration: Duration(seconds: 1),
-            curve: Curves.ease,
-            height: MediaQuery.of(context).size.height * 0.95,
-            width: MediaQuery.of(context).size.width * 0.95,
+            duration: const Duration(milliseconds: 600),
+            curve: Curves.easeOutCubic,
+            margin: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.1), // added
+              color: Colors.black.withValues(alpha: 0.15),
+              border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.08), width: 0.8),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  blurRadius: 24,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
+                  child: Column(
+                    children: [
+                      _buildHeader(deviceLabel),
+                      const SizedBox(height: 4),
+                      if (_editMode) _buildLegend(),
+                      Expanded(child: _buildGrid()),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Header ────────────────────────────────────────────────────────────────
+  Widget _buildHeader(String? deviceLabel) => Row(
+        children: [
+          if (deviceLabel != null)
+            Expanded(
+              child: Text(
+                deviceLabel,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.blueGrey.shade200,
+                  letterSpacing: 0.5,
+                  shadows: const [Shadow(color: Colors.black87, blurRadius: 4)],
+                ),
+              ),
+            )
+          else
+            const Spacer(),
+          GestureDetector(
+            onTap: () async {
+              if (_editMode) await _saveOrder();
+              setState(() => _editMode = !_editMode);
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: _editMode
+                    ? Colors.deepOrange.withValues(alpha: 0.25)
+                    : Colors.white.withValues(alpha: 0.07),
+                borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                    color: Colors.grey.withValues(alpha: 0.5),
-                    width: 0.5), // added
-                borderRadius: BorderRadius.circular(6.0),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.shade500.withValues(alpha: 0.1),
-                    offset: Offset(4.0, 4.0),
-                    blurRadius: 12.0,
-                    spreadRadius: 1.0,
-                  ),
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    offset: Offset(-4.0, -4.0),
-                    blurRadius: 12.0,
-                    spreadRadius: 1.0,
-                  ),
-                ]),
-            child: Padding(
-              padding: const EdgeInsets.all(5.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                crossAxisAlignment: CrossAxisAlignment.center,
+                  color: _editMode
+                      ? Colors.deepOrange.withValues(alpha: 0.6)
+                      : Colors.white.withValues(alpha: 0.15),
+                  width: 0.8,
+                ),
+              ),
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
+                children: [
+                  Icon(
+                    _editMode ? Icons.check_rounded : Icons.dashboard_customize,
+                    size: 13,
+                    color: _editMode ? Colors.deepOrange : Colors.white60,
+                  ),
+                  const SizedBox(width: 5),
                   Text(
-                    _deviceData.keys.length >= 20
-                        ? '${_deviceData['manufacturer']?.toUpperCase()} - ${_deviceData['model']?.toUpperCase()}'
-                        : 'No Data to show',
+                    _editMode ? 'Salvar ordem' : 'Reorganizar',
                     style: TextStyle(
-                      inherit: true,
-                      height: 1,
-                      fontSize: 12.0,
-                      color: Colors.black,
-                      shadows: [
-                        Shadow(
-                            // bottomLeft
-                            offset: Offset(-0.5, -0.5),
-                            color: Colors.blueGrey[100]!),
-                        Shadow(
-                            // bottomRight
-                            offset: Offset(0.5, -0.5),
-                            color: Colors.blueGrey[100]!),
-                        Shadow(
-                            // topRight
-                            offset: Offset(0.5, 0.5),
-                            color: Colors.blueGrey[100]!),
-                        Shadow(
-                            // topLeft
-                            offset: Offset(-0.5, 0.5),
-                            color: Colors.blueGrey[100]!),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            icon: Icon(
-                              Icons.assignment_turned_in_outlined,
-                              color: Colors.grey,
-                              size: 30.0,
-                            ),
-                            style: ElevatedButton.styleFrom(
-                                foregroundColor: Colors.white,
-                                alignment: AlignmentGeometry.lerp(
-                                    Alignment.center, Alignment.center, 5),
-                                backgroundColor: Colors.black,
-                                minimumSize: Size(width * 0.45, height * 0.1),
-                                maximumSize: Size(width * 0.45, height * 0.1),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(6),
-                                  side: BorderSide(
-                                    style: BorderStyle.solid,
-                                    color: Colors.grey.withValues(alpha: 0.5),
-                                    width: 0.2,
-                                  ),
-                                ),
-                                shadowColor: Colors.grey,
-                                elevation: 8),
-                            label: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                AutoSizeText(
-                                  "Conferir \r",
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w400,
-                                    color: Colors.white,
-                                    height: 1.0,
-                                  ),
-                                  maxLines: 1,
-                                ),
-                                Text(
-                                  "Recebimento",
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    color: Colors.grey.shade500,
-                                    height: 1.0,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            onPressed: () {
-                              var route = MaterialPageRoute(
-                                builder: (BuildContext context) => Conference(
-                                  idUser: widget.data[0],
-                                  user: widget.data[1],
-                                  photos: [],
-                                ),
-                              );
-                              Navigator.of(context).push(route);
-                            },
-                          ),
-                        ),
-                        SizedBox(
-                          width: 20,
-                        ),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            icon: Icon(
-                              Icons.add_shopping_cart_sharp,
-                              color: Colors.grey,
-                              size: 30.0,
-                            ),
-                            style: ElevatedButton.styleFrom(
-                                foregroundColor: Colors.white,
-                                alignment: AlignmentGeometry.lerp(
-                                    Alignment.center, Alignment.center, 5),
-                                backgroundColor: Colors.black,
-                                minimumSize: Size(width * 0.45, height * 0.1),
-                                maximumSize: Size(width * 0.45, height * 0.1),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(6),
-                                  side: BorderSide(
-                                    style: BorderStyle.solid,
-                                    color: Colors.grey.withValues(alpha: 0.5),
-                                    width: 0.2,
-                                  ),
-                                ),
-                                shadowColor: Colors.grey,
-                                elevation: 8),
-                            label: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                AutoSizeText(
-                                  "  Colheita   \r",
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w400,
-                                    color: Colors.white,
-                                    height: 1.0,
-                                  ),
-                                  maxLines: 1,
-                                ),
-                                Text(
-                                  "Por Lote",
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    color: Colors.grey.shade500,
-                                    height: 1.0,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            onPressed: () {
-                              var route = MaterialPageRoute(
-                                builder: (BuildContext? context) => Picking(
-                                  title: widget.title,
-                                  idUser: widget.data[0],
-                                ),
-                              );
-                              Navigator.of(context).push(route);
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            icon: Icon(
-                              Icons.autorenew,
-                              color: Colors.grey,
-                              size: 30.0,
-                            ),
-                            style: ElevatedButton.styleFrom(
-                                foregroundColor: Colors.white,
-                                alignment: AlignmentGeometry.lerp(
-                                    Alignment.center, Alignment.center, 5),
-                                backgroundColor: Colors.black,
-                                minimumSize: Size(width * 0.45, height * 0.1),
-                                maximumSize: Size(width * 0.45, height * 0.1),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(6),
-                                  side: BorderSide(
-                                    style: BorderStyle.solid,
-                                    color: Colors.grey.withValues(alpha: 0.5),
-                                    width: 0.2,
-                                  ),
-                                ),
-                                shadowColor: Colors.grey,
-                                elevation: 8),
-                            label: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                AutoSizeText(
-                                  "Reposição    \r",
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w400,
-                                    color: Colors.white,
-                                    height: 1.0,
-                                  ),
-                                  maxLines: 1,
-                                ),
-                                Text(
-                                  "Separados",
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    color: Colors.grey.shade500,
-                                    height: 1.0,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            onPressed: () {
-                              var route = MaterialPageRoute(
-                                builder: (BuildContext context) => Repositing(
-                                  username: widget.data[1],
-                                  title: '',
-                                ),
-                              );
-                              Navigator.of(context).push(route);
-                            },
-                          ),
-                        ),
-                        SizedBox(
-                          width: 20,
-                        ),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            icon: Icon(
-                              Icons.email_outlined,
-                              color: Colors.grey,
-                              size: 30.0,
-                            ),
-                            style: ElevatedButton.styleFrom(
-                                foregroundColor: Colors.white,
-                                alignment: AlignmentGeometry.lerp(
-                                    Alignment.center, Alignment.center, 5),
-                                backgroundColor: Colors.black,
-                                minimumSize: Size(width * 0.45, height * 0.1),
-                                maximumSize: Size(width * 0.45, height * 0.1),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(6),
-                                  side: BorderSide(
-                                    style: BorderStyle.solid,
-                                    color: Colors.grey.withValues(alpha: 0.5),
-                                    width: 0.2,
-                                  ),
-                                ),
-                                shadowColor: Colors.grey,
-                                elevation: 8),
-                            label: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                AutoSizeText(
-                                  "Endereço    \r",
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w400,
-                                    color: Colors.white,
-                                    height: 1.0,
-                                  ),
-                                  maxLines: 1,
-                                ),
-                                Text(
-                                  "Localização",
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    color: Colors.grey.shade500,
-                                    height: 1.0,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            onPressed: () {
-                              var route = MaterialPageRoute(
-                                builder: (BuildContext context) => UpdateProd(
-                                    // idUser: int.parse(this.widget.data[0]),
-                                    // qrCode: _qrcode,
-                                    ),
-                              );
-                              Navigator.of(context).push(route);
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            icon: Icon(
-                              Icons.assignment_turned_in_outlined,
-                              color: Colors.grey,
-                              size: 30.0,
-                            ),
-                            style: ElevatedButton.styleFrom(
-                                foregroundColor: Colors.white,
-                                alignment: AlignmentGeometry.lerp(
-                                    Alignment.center, Alignment.center, 5),
-                                backgroundColor: Colors.black,
-                                minimumSize: Size(width * 0.45, height * 0.1),
-                                maximumSize: Size(width * 0.45, height * 0.1),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(6),
-                                  side: BorderSide(
-                                    style: BorderStyle.solid,
-                                    color: Colors.grey.withValues(alpha: 0.5),
-                                    width: 0.2,
-                                  ),
-                                ),
-                                shadowColor: Colors.grey,
-                                elevation: 8),
-                            label: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                AutoSizeText(
-                                  "Colheita     \r",
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w400,
-                                    color: Colors.white,
-                                    height: 1.0,
-                                  ),
-                                  maxLines: 2,
-                                ),
-                                Text(
-                                  "Discreta NFe",
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    color: Colors.grey.shade500,
-                                    height: 1.0,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            onPressed: () {
-                              var route = MaterialPageRoute(
-                                // Picking_Nfe
-                                builder: (BuildContext context) => Picking_Nfe(
-                                  title: '',
-                                  username: widget.data[1],
-                                ),
-                              );
-                              Navigator.of(context).push(route);
-                            },
-                          ),
-                        ),
-                        SizedBox(
-                          width: 20,
-                        ),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            icon: Icon(
-                              Icons.add_shopping_cart_sharp,
-                              color: Colors.grey,
-                              size: 30.0,
-                            ),
-                            style: ElevatedButton.styleFrom(
-                                foregroundColor: Colors.white,
-                                alignment: AlignmentGeometry.lerp(
-                                    Alignment.center, Alignment.center, 5),
-                                backgroundColor: Colors.black,
-                                minimumSize: Size(width * 0.45, height * 0.1),
-                                maximumSize: Size(width * 0.45, height * 0.1),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(6),
-                                  side: BorderSide(
-                                    style: BorderStyle.solid,
-                                    color: Colors.grey.withValues(alpha: 0.5),
-                                    width: 0.2,
-                                  ),
-                                ),
-                                shadowColor: Colors.grey,
-                                elevation: 8),
-                            label: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                AutoSizeText(
-                                  "Colheita\r",
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w400,
-                                    color: Colors.white,
-                                    height: 1.0,
-                                  ),
-                                  maxLines: 2,
-                                ),
-                                Text(
-                                  "Discreta Pedido",
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    color: Colors.grey.shade500,
-                                    height: 1.0,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            onPressed: () {
-                              var route = MaterialPageRoute(
-                                builder: (BuildContext? context) => Picking(
-                                  title: widget.title,
-                                  idUser: widget.data[0],
-                                ),
-                              );
-                              Navigator.of(context).push(route);
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Expanded(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              icon: Icon(
-                                Icons.article_outlined,
-                                color: Colors.grey,
-                                size: 30.0,
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                  foregroundColor: Colors.white,
-                                  alignment: AlignmentGeometry.lerp(
-                                      Alignment.center, Alignment.center, 5),
-                                  backgroundColor: Colors.black,
-                                  minimumSize: Size(width * 0.45, height * 0.1),
-                                  maximumSize: Size(width * 0.45, height * 0.1),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(6),
-                                    side: BorderSide(
-                                      style: BorderStyle.solid,
-                                      color: Colors.grey.withValues(alpha: 0.5),
-                                      width: 0.2,
-                                    ),
-                                  ),
-                                  shadowColor: Colors.grey,
-                                  elevation: 8),
-                              label: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  AutoSizeText(
-                                    "Nota Fiscal\r",
-                                    textAlign: TextAlign.left,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w400,
-                                      color: Colors.white,
-                                      height: 1.0,
-                                    ),
-                                    maxLines: 1,
-                                  ),
-                                  Text(
-                                    "Emissão",
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      color: Colors.grey.shade500,
-                                      height: 1.0,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              onPressed: () {
-                                var route = MaterialPageRoute(
-                                  builder: (BuildContext context) => Orders(
-                                    idUser: widget.data[0],
-                                  ),
-                                );
-                                Navigator.of(context).push(route);
-                              },
-                            ),
-                          ),
-                          SizedBox(
-                            width: 20,
-                          ),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              icon: Icon(
-                                Icons.all_inclusive_sharp,
-                                color: Colors.grey,
-                                size: 30.0,
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                  foregroundColor: Colors.white,
-                                  alignment: AlignmentGeometry.lerp(
-                                      Alignment.center, Alignment.center, 5),
-                                  backgroundColor: Colors.black,
-                                  minimumSize: Size(width * 0.45, height * 0.1),
-                                  maximumSize: Size(width * 0.45, height * 0.1),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(6),
-                                    side: BorderSide(
-                                      style: BorderStyle.solid,
-                                      color: Colors.grey.withValues(alpha: 0.5),
-                                      width: 0.2,
-                                    ),
-                                  ),
-                                  shadowColor: Colors.grey,
-                                  elevation: 8),
-                              label: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  AutoSizeText(
-                                    "Balanço\r",
-                                    textAlign: TextAlign.left,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w400,
-                                      color: Colors.white,
-                                      height: 1.0,
-                                    ),
-                                    maxLines: 1,
-                                  ),
-                                  Text(
-                                    "Geral",
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      color: Colors.grey.shade500,
-                                      height: 1.0,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              onPressed: () {
-                                var route = MaterialPageRoute(
-                                  builder: (BuildContext context) => Inventory(
-                                    idUser: widget.data[0],
-                                  ),
-                                );
-                                Navigator.of(context).push(route);
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            icon: Icon(
-                              Icons.insights_sharp,
-                              color: Colors.grey,
-                              size: 30.0,
-                            ),
-                            style: ElevatedButton.styleFrom(
-                                foregroundColor: Colors.white,
-                                alignment: AlignmentGeometry.lerp(
-                                    Alignment.center, Alignment.center, 5),
-                                backgroundColor: Colors.black,
-                                minimumSize: Size(width * 0.45, height * 0.1),
-                                maximumSize: Size(width * 0.45, height * 0.1),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(6),
-                                  side: BorderSide(
-                                    style: BorderStyle.solid,
-                                    color: Colors.grey.withValues(alpha: 0.5),
-                                    width: 0.2,
-                                  ),
-                                ),
-                                shadowColor: Colors.grey,
-                                elevation: 8),
-                            label: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                AutoSizeText(
-                                  "Devolução\r",
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w400,
-                                    color: Colors.white,
-                                    height: 1.0,
-                                  ),
-                                  maxLines: 1,
-                                ),
-                                Text(
-                                  "Fabricante",
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    color: Colors.grey.shade500,
-                                    height: 1.0,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            onPressed: () {
-                              var route = MaterialPageRoute(
-                                builder: (BuildContext context) => Returns(
-                                  idUser: widget.data[0],
-                                  user: '',
-                                ),
-                              );
-                              Navigator.of(context).push(route);
-                            },
-                          ),
-                        ),
-                        SizedBox(
-                          width: 20,
-                        ),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            icon: Icon(
-                              Icons.help_center_outlined,
-                              color: Colors.grey,
-                              size: 30.0,
-                            ),
-                            style: ElevatedButton.styleFrom(
-                                foregroundColor: Colors.white,
-                                alignment: AlignmentGeometry.lerp(
-                                    Alignment.center, Alignment.center, 5),
-                                backgroundColor: Colors.black,
-                                minimumSize: Size(width * 0.45, height * 0.1),
-                                maximumSize: Size(width * 0.45, height * 0.1),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(6),
-                                  side: BorderSide(
-                                    style: BorderStyle.solid,
-                                    color: Colors.grey.withValues(alpha: 0.5),
-                                    width: 0.2,
-                                  ),
-                                ),
-                                shadowColor: Colors.grey,
-                                elevation: 8),
-                            label: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                AutoSizeText(
-                                  "Ajuda\r",
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w400,
-                                    color: Colors.white,
-                                    height: 1.0,
-                                  ),
-                                  maxLines: 1,
-                                ),
-                                Text(
-                                  "Manual e dicas",
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    color: Colors.grey.shade700,
-                                    height: 1.0,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            onPressed: () {
-                              var route = MaterialPageRoute(
-                                // Picking_Nfe
-                                builder: (BuildContext context) =>
-                                    LastProducedWidget(
-                                  title: 'Manual',
-                                  username: widget.data[1],
-                                  idUser: widget.data[0],
-                                ),
-                              );
-                              Navigator.of(context).push(route);
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            icon: Icon(
-                              Icons.assignment_turned_in_outlined,
-                              color: Colors.grey,
-                              size: 30.0,
-                            ),
-                            style: ElevatedButton.styleFrom(
-                                foregroundColor: Colors.white,
-                                alignment: AlignmentGeometry.lerp(
-                                    Alignment.center, Alignment.center, 5),
-                                backgroundColor: Colors.black,
-                                minimumSize: Size(width * 0.45, height * 0.1),
-                                maximumSize: Size(width * 0.45, height * 0.1),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(6),
-                                  side: BorderSide(
-                                    style: BorderStyle.solid,
-                                    color: Colors.grey.withValues(alpha: 0.5),
-                                    width: 0.2,
-                                  ),
-                                ),
-                                shadowColor: Colors.grey,
-                                elevation: 8),
-                            label: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                AutoSizeText(
-                                  "Eladecora     \r",
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w400,
-                                    color: Colors.white,
-                                    height: 1.0,
-                                  ),
-                                  maxLines: 1,
-                                ),
-                                Text(
-                                  "Separação",
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    color: Colors.grey.shade500,
-                                    height: 1.0,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            onPressed: () {
-                              var route = MaterialPageRoute(
-                                builder: (BuildContext context) => Vtex(
-                                  username: widget.data[1],
-                                  idUser: widget.data[0],
-                                  title: '',
-                                ),
-                              );
-                              Navigator.of(context).push(route);
-                            },
-                          ),
-                        ),
-                        SizedBox(
-                          width: 20,
-                        ),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            icon: Icon(
-                              Icons.exit_to_app_outlined,
-                              color: Colors.grey,
-                              size: 30.0,
-                            ),
-                            style: ElevatedButton.styleFrom(
-                                foregroundColor: Colors.white,
-                                alignment: AlignmentGeometry.lerp(
-                                    Alignment.center, Alignment.center, 5),
-                                backgroundColor: Colors.black,
-                                minimumSize: Size(width * 0.45, height * 0.1),
-                                maximumSize: Size(width * 0.45, height * 0.1),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(6),
-                                  side: BorderSide(
-                                    style: BorderStyle.solid,
-                                    color: Colors.grey.withValues(alpha: 0.5),
-                                    width: 0.2,
-                                  ),
-                                ),
-                                shadowColor: Colors.grey,
-                                elevation: 10),
-                            label: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                AutoSizeText(
-                                  "Vip Capas     \r",
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w400,
-                                    color: Colors.white,
-                                    height: 1.0,
-                                  ),
-                                  maxLines: 1,
-                                ),
-                                Text(
-                                  "Separação",
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    color: Colors.grey.shade500,
-                                    height: 1.0,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            onPressed: () {
-                              var route = MaterialPageRoute(
-                                builder: (BuildContext context) => Vipcapas(
-                                  idUser: widget.data[0],
-                                  username: widget.data[1],
-                                ),
-                              );
-                              Navigator.of(context).push(route);
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            icon: Icon(
-                              Icons.exit_to_app_outlined,
-                              color: Colors.grey,
-                              size: 30.0,
-                            ),
-                            style: ElevatedButton.styleFrom(
-                                foregroundColor: Colors.white,
-                                alignment: AlignmentGeometry.lerp(
-                                    Alignment.center, Alignment.center, 5),
-                                backgroundColor: Colors.black,
-                                minimumSize: Size(width * 0.45, height * 0.1),
-                                maximumSize: Size(width * 0.45, height * 0.1),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(6),
-                                  side: BorderSide(
-                                    style: BorderStyle.solid,
-                                    color: Colors.grey.withValues(alpha: 0.5),
-                                    width: 0.2,
-                                  ),
-                                ),
-                                shadowColor: Colors.grey,
-                                elevation: 10),
-                            label: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                AutoSizeText(
-                                  "Etiquetas     \r",
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w400,
-                                    color: Colors.white,
-                                    height: 1.0,
-                                  ),
-                                  maxLines: 1,
-                                ),
-                                Text(
-                                  "Emissão",
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    color: Colors.grey.shade500,
-                                    height: 1.0,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            onPressed: () {
-                              var route = MaterialPageRoute(
-                                builder: (BuildContext context) => Labels(
-                                  title: "Teste",
-                                  key: null,
-                                  text: '',
-                                ),
-                              );
-                              Navigator.of(context).push(route);
-                            },
-                          ),
-                        ),
-                        SizedBox(
-                          width: 20,
-                        ),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            icon: Icon(
-                              Icons.content_cut_outlined,
-                              color: Colors.grey,
-                              size: 25.0,
-                            ),
-                            style: ElevatedButton.styleFrom(
-                                foregroundColor: Colors.white,
-                                alignment: AlignmentGeometry.lerp(
-                                    Alignment.center, Alignment.center, 5),
-                                backgroundColor: Colors.black,
-                                minimumSize: Size(width * 0.45, height * 0.1),
-                                maximumSize: Size(width * 0.45, height * 0.1),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(6),
-                                  side: BorderSide(
-                                    style: BorderStyle.solid,
-                                    color: Colors.grey.withValues(alpha: 0.5),
-                                    width: 0.2,
-                                  ),
-                                ),
-                                shadowColor: Colors.grey,
-                                elevation: 10),
-                            label: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                AutoSizeText(
-                                  "Produção     \r",
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w400,
-                                    color: Colors.white,
-                                    height: 1.0,
-                                  ),
-                                  maxLines: 1,
-                                ),
-                                Text(
-                                  "Do Dia",
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    color: Colors.grey.shade500,
-                                    height: 1.0,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            onPressed: () {
-                              var route = MaterialPageRoute(
-                                builder: (BuildContext context) => DailyProd(),
-                              );
-                              Navigator.of(context).push(route);
-                            },
-                          ),
-                        ),
-                      ],
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                      color: _editMode ? Colors.deepOrange : Colors.white54,
                     ),
                   ),
                 ],
               ),
             ),
           ),
+        ],
+      );
+
+  // ── Legenda de categorias ─────────────────────────────────────────────────
+  Widget _buildLegend() => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: MenuCategory.values
+                .map((cat) => Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: cat.bg,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: cat.accent.withValues(alpha: 0.4)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 7,
+                            height: 7,
+                            decoration: BoxDecoration(
+                                color: cat.accent, shape: BoxShape.circle),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            cat.displayLabel,
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: cat.accent,
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ))
+                .toList(),
+          ),
+        ),
+      );
+
+  // ── Grid reordenável ──────────────────────────────────────────────────────
+  //
+  // ReorderableBuilder gerencia todo o drag-and-drop internamente.
+  // Cada filho PRECISA de Key única — usamos Key(item.id).
+  // onReorder recebe uma função que aplica direto na lista _items.
+  // enableDraggable é falso no modo normal (evita long-press acidental).
+  //
+  Widget _buildGrid() {
+    // Gera os widgets filhos — Key obrigatória em cada um
+    final children = _items
+        .map((item) => _MenuButton(
+              key: Key(item.id), // ← Key estável pelo ID
+              config: item,
+              editMode: _editMode,
+              onTap: _editMode
+                  ? null
+                  : () => Navigator.of(context)
+                      .push(MaterialPageRoute(builder: item.pageBuilder)),
+            ))
+        .toList();
+
+    return ReorderableBuilder(
+      // key: ValueKey(_editMode), // reseta o estado interno ao trocar de modo
+      scrollController: _scrollController,
+      enableDraggable: _editMode, // drag só no modo edição
+      enableLongPress: true, // segura para iniciar o drag
+      longPressDelay: const Duration(milliseconds: 300),
+      onReorder: (ReorderedListFunction reorder) {
+        // reorder() aplica a reordenação na lista e retorna a nova lista
+        setState(() {
+          _items = reorder(_items) as List<MenuItemConfig>;
+        });
+      },
+      // BoxDecoration do card enquanto está sendo arrastado
+      dragChildBoxDecoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.white.withValues(alpha: 0.15),
+            blurRadius: 20,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      builder: (children) => GridView(
+        key: _gridKey,
+        controller: _scrollController,
+        shrinkWrap: true,
+        physics: const ClampingScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2, // 2 colunas
+          mainAxisSpacing: 7,
+          crossAxisSpacing: 7,
+          childAspectRatio: 2.6, // mesma proporção das versões anteriores
+        ),
+        children: children,
+      ),
+      children: children,
+    );
+  }
+
+  // ── AppBar ────────────────────────────────────────────────────────────────
+  AppBar _buildAppBar() => AppBar(
+        foregroundColor: Colors.white,
+        backgroundColor: Colors.black,
+        title: Padding(
+          padding: const EdgeInsets.only(left: 16),
+          child: Row(children: [
+            const Text('tiven',
+                style: TextStyle(
+                    fontSize: 22,
+                    fontFamily: 'Roboto',
+                    color: Colors.white,
+                    fontWeight: FontWeight.w100)),
+            const SizedBox(width: 22),
+            Image.asset('assets/images/logoVt.png', width: 18, height: 18),
+          ]),
+        ),
+      );
+
+  // ── Drawer ────────────────────────────────────────────────────────────────
+  Widget _buildDrawer() => Drawer(
+        backgroundColor: Colors.grey.shade900,
+        child: ListView(children: [
+          DrawerHeader(
+            decoration: const BoxDecoration(color: Colors.black),
+            child: Row(children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  image: DecorationImage(
+                    fit: BoxFit.fill,
+                    image: NetworkImage(
+                        'https://www.pedimus.com.br/home/img/rick.png'),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('Usuário : ${widget.data[0]}',
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 12)),
+                    Text('Nome : ${widget.data[1]}',
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 12)),
+                    Text('Sobrenome : ${widget.data[2]}',
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 12)),
+                  ],
+                ),
+              ),
+            ]),
+          ),
+          _tile('Seu perfil', Icons.person_outline, () {}),
+          _tile('Seu contrato', Icons.description_outlined, () {}),
+          _tile('Ligar para suporte', Icons.phone_outlined, _launchPhone),
+          const Divider(color: Colors.white12),
+          _tile('Sobre nós', Icons.info_outline, () {}),
+          const Divider(color: Colors.white12),
+          _tile('Sair', Icons.logout, _showExitDialog, color: Colors.redAccent),
+        ]),
+      );
+
+  ListTile _tile(String t, IconData i, VoidCallback f, {Color? color}) =>
+      ListTile(
+        leading: Icon(i, color: color ?? Colors.white60, size: 20),
+        title: Text(t,
+            style: TextStyle(color: color ?? Colors.white70, fontSize: 13)),
+        onTap: f,
+        dense: true,
+      );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _MenuButton — botão individual com glassmorphism e sombras no texto
+// ─────────────────────────────────────────────────────────────────────────────
+class _MenuButton extends StatefulWidget {
+  const _MenuButton({
+    required super.key,
+    required this.config,
+    required this.editMode,
+    required this.onTap,
+  });
+
+  final MenuItemConfig config;
+  final bool editMode;
+  final VoidCallback? onTap;
+
+  @override
+  State<_MenuButton> createState() => _MenuButtonState();
+}
+
+class _MenuButtonState extends State<_MenuButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 80),
+      reverseDuration: const Duration(milliseconds: 180),
+    );
+    _scale = Tween<double>(begin: 1.0, end: 0.94)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = widget.config.category.accent;
+    final cat = widget.config.category;
+
+    final buttonContent = ScaleTransition(
+      scale: _scale,
+      child: Container(
+        decoration: BoxDecoration(
+          color: cat.bg,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: accent.withValues(alpha: widget.editMode ? 0.6 : 0.35),
+            width: widget.editMode ? 1.2 : 0.6,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: cat.glow,
+              blurRadius: 10,
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.4),
+              blurRadius: 6,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(7),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Row(
+                children: [
+                  // Ícone com fundo colorido
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Icon(widget.config.icon, color: accent, size: 22),
+                  ),
+                  const SizedBox(width: 10),
+
+                  // Textos com sombra para legibilidade
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.config.label,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                            letterSpacing: 0.2,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black.withValues(alpha: 0.8),
+                                blurRadius: 6,
+                              ),
+                              Shadow(
+                                color: accent.withValues(alpha: 0.3),
+                                blurRadius: 10,
+                              ),
+                            ],
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          widget.config.sublabel,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: accent.withValues(alpha: 0.9),
+                            fontWeight: FontWeight.w400,
+                            letterSpacing: 0.1,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black.withValues(alpha: 0.7),
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Handle visual no modo edição
+                  if (widget.editMode)
+                    Icon(Icons.drag_indicator_rounded,
+                        color: accent.withValues(alpha: 0.5), size: 18),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
+    );
+
+    // Modo edição: sem GestureDetector para não bloquear o LongPressDraggable
+    // do ReorderableBuilder — qualquer GestureDetector na frente vence a
+    // arena de gestos e o drag nunca inicia.
+    if (widget.editMode) {
+      return buttonContent;
+    }
+
+    if (widget.editMode) return buttonContent; // ← sem gesto
+
+    return GestureDetector(
+      onTapDown: (_) => _ctrl.forward(),
+      onTapUp: (_) {
+        _ctrl.reverse();
+        widget.onTap?.call();
+      },
+      onTapCancel: () => _ctrl.reverse(),
+      child: buttonContent,
     );
   }
 }
