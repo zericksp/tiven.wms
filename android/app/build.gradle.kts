@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "br.com.tiven.tiven"
+    namespace = "br.com.tiven"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -20,7 +20,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "br.com.tiven.tiven"
+        applicationId = "br.com.tiven"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

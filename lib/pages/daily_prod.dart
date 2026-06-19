@@ -14,6 +14,8 @@ import 'package:volume_controller/volume_controller.dart';
 // import 'package:date_picker_plus/date_picker_plus.dart';
 
 class DailyProd extends StatelessWidget {
+  const DailyProd({super.key});
+
   // This widget is the root of the application.
   @override
   Widget build(BuildContext context) {
@@ -81,7 +83,8 @@ class _MyHomePageState extends State<MyHomePage> {
     _volumeController = VolumeController.instance;
 
     // Listen to system volume change
-    _subscription = _volumeController.addListener((volume) {}, fetchInitialVolume: true);
+    _subscription =
+        _volumeController.addListener((volume) {}, fetchInitialVolume: true);
   }
 
   @override
@@ -102,19 +105,18 @@ class _MyHomePageState extends State<MyHomePage> {
   late String _title = "";
   String clientId = '5ec82041fae60a71485134ad93e576357f746eb7';
   String _location = "";
-  String _location2 = "";
-  String _location3 = "";
   late String barcodeScanRes = "";
   late String qrcodeScanRes = "";
   late String _scanBarcode = "";
   late final int _scanQRcode = 0;
   String _sku = "";
   String _imagePath = 'https://www.tiven.com.br/crud/images/cover.jpg';
-  final String _imageError = 'https://www.tiven.com.br/crud/images/nopicture.png';
+  final String _imageError =
+      'https://www.tiven.com.br/crud/images/nopicture.png';
   static final orgColor = Colors.black;
   var currentColor = orgColor;
   late String curDate = DateFormat('dd/MM/yyyy').format(DateTime.now());
-  DateTime SelectedDate = DateTime.now();
+  DateTime selectedDate = DateTime.now();
   List<dynamic> sounds = [];
   List<dynamic> productionList = [];
   int totalQuantity = 0;
@@ -153,8 +155,7 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  Future<void> insDailyProd(
-      BuildContext context, sku, title, barcode) async {
+  Future<void> insDailyProd(BuildContext context, sku, title, barcode) async {
     MySqlConnection? conn;
     int qty = 1;
     try {
@@ -212,8 +213,6 @@ class _MyHomePageState extends State<MyHomePage> {
         _barcode = row['prd_gtin'].toString();
         _sku = row['prd_codigo'];
         _location = row['prd_localizacao'] ?? "N/A";
-        _location2 = row['prd_localizacao2'] ?? "N/A";
-        _location3 = row['prd_localizacao3'] ?? "N/A";
         _imagePath = "https://www.tiven.com.br/crud/images/" +
             row["prd_codigo"] +
             ".jpg";
@@ -223,8 +222,6 @@ class _MyHomePageState extends State<MyHomePage> {
           // _barcode = '';
           _sku = '';
           _location = "";
-          _location2 = "";
-          _location3 = "";
           _imagePath = 'http://www.tiven.com.br/crud/images/notregistered.png';
           print(_barcode);
         });
@@ -270,8 +267,6 @@ class _MyHomePageState extends State<MyHomePage> {
       barcode = "";
       _sku = data['data'][0]['prd_codigo'].toString();
       _location = "N/A";
-      _location2 = "N/A";
-      _location3 = "N/A";
       _imagePath = "https://www.tiven.com.br/crud/images/" +
           data['data'][0]["prd_codigo"] +
           ".jpg";
@@ -281,8 +276,6 @@ class _MyHomePageState extends State<MyHomePage> {
         barcode = '';
         _sku = '';
         _location = "";
-        _location2 = "";
-        _location3 = "";
         _imagePath = 'http://www.tiven.com.br/crud/images/notregistered.png';
         print(barcode);
       });
@@ -432,7 +425,7 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-final FlutterBeepPlus _beep = FlutterBeepPlus();
+  final FlutterBeepPlus _beep = FlutterBeepPlus();
 
   @override
   Widget build(BuildContext context) {
@@ -456,9 +449,9 @@ final FlutterBeepPlus _beep = FlutterBeepPlus();
             ElevatedButton(
               onPressed: () async {
                 setState(() async {
-                  DateTime? newDate = await showDatePicker(
+                  await showDatePicker(
                       context: context,
-                      initialDate: SelectedDate,
+                      initialDate: selectedDate,
                       firstDate: DateTime(2024),
                       lastDate: DateTime(2026));
                   // change curDate to view historical daily production
@@ -595,8 +588,8 @@ final FlutterBeepPlus _beep = FlutterBeepPlus();
                           _sku = _sku;
                         });
                         // await insDailyProd(context, _sku, _title, _barcode);
-                        await _beep.playSysSound(
-                            AndroidSoundID.TONE_CDMA_HIGH_PBX_L);
+                        await _beep
+                            .playSysSound(AndroidSoundID.TONE_CDMA_HIGH_PBX_L);
                         fetchProductionData();
                       }
 
@@ -755,9 +748,8 @@ final FlutterBeepPlus _beep = FlutterBeepPlus();
                 foregroundColor: Colors.white,
               ),
             ),
-            progressIndicatorBuilder:
-                (context, imageError, downloadProgress) =>
-                    CircularProgressIndicator(value: downloadProgress.progress),
+            progressIndicatorBuilder: (context, imageError, downloadProgress) =>
+                CircularProgressIndicator(value: downloadProgress.progress),
             errorWidget: (context, url, error) => CircleAvatar(
               backgroundColor: Colors.red,
               radius: 82.0,

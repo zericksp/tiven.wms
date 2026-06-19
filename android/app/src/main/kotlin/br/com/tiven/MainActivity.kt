@@ -1,4 +1,4 @@
-package br.com.tiven.tiven
+package br.com.tiven
 
 import io.flutter.embedding.android.FlutterActivity
 

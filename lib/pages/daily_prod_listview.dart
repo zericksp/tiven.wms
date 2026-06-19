@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/services.dart';
@@ -14,6 +15,8 @@ import 'package:mysql1/mysql1.dart';
 // import 'package:date_picker_plus/date_picker_plus.dart';
 
 class DailyProd extends StatelessWidget {
+  const DailyProd({super.key});
+
   // This widget is the root of the application.
   @override
   Widget build(BuildContext context) {
@@ -28,11 +31,13 @@ class DailyProd extends StatelessWidget {
 }
 
 class MyHomePage extends StatefulWidget {
-  MyHomePage({required Key key, required this.title}) : super(key: key);
+  const MyHomePage({super.key, required this.title});
   final String title;
 
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  _MyHomePageState createState() {
+    return _MyHomePageState();
+  }
 }
 
 class UserDetails {
@@ -58,7 +63,7 @@ class UserDetails {
 class _MyHomePageState extends State<MyHomePage> {
   int _qrcode = 0;
   String _barcode = "";
-  var data;
+  var data = {};
   final List<UserDetails> _searchResult = [];
   final List<UserDetails> _userDetails = [];
   TextEditingController scanController = TextEditingController();
@@ -94,19 +99,16 @@ class _MyHomePageState extends State<MyHomePage> {
   late String _title = "";
   String clientId = '5ec82041fae60a71485134ad93e576357f746eb7';
   String _location = "";
-  String _location2 = "";
-  String _location3 = "";
   late String barcodeScanRes = "";
   late String qrcodeScanRes = "";
   late String _scanBarcode = "";
   late final int _scanQRcode = 0;
   String _sku = "";
   String _imagePath = 'https://www.tiven.com.br/crud/images/cover.jpg';
-  final String _imageError = 'https://www.tiven.com.br/crud/images/nopicture.png';
   static final orgColor = Colors.black;
   var currentColor = orgColor;
   late String curDate = DateFormat('dd/MM/yyyy').format(DateTime.now());
-  DateTime SelectedDate = DateTime.now();
+  DateTime selectedDate = DateTime.now();
   final _flutterBeepPlusPlugin = FlutterBeepPlus();
   List<AndroidSoundID> sounds = [];
   // AndroidSoundIDs AlertSound = AndroidSoundIDs.TONE_CDMA_ANSWER as AndroidSoundIDs;
@@ -182,8 +184,7 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  Future<void> insDailyProd(
-      BuildContext context, sku, title, barcode) async {
+  Future<void> insDailyProd(String sku, String title, String barcode) async {
     MySqlConnection? conn;
     int qty = 1;
     try {
@@ -198,9 +199,11 @@ class _MyHomePageState extends State<MyHomePage> {
       await conn.query(query, [sku, title, qty, barcode]);
 
       // Exibir Snackbar de sucesso (Laranja)
+      if (!mounted) return;
       showSnackbar(context, "Produto inserido com sucesso!", Colors.orange);
     } catch (e) {
       // Exibir Snackbar de erro (Vermelho)
+      if (!mounted) return;
       showSnackbar(context, "Erro ao inserir produto: $e", Colors.red);
     } finally {
       await conn?.close();
@@ -241,27 +244,26 @@ class _MyHomePageState extends State<MyHomePage> {
         _barcode = row['prd_gtin'].toString();
         _sku = row['prd_codigo'];
         _location = row['prd_localizacao'] ?? "N/A";
-        _location2 = row['prd_localizacao2'] ?? "N/A";
-        _location3 = row['prd_localizacao3'] ?? "N/A";
-        _imagePath = "https://www.tiven.com.br/crud/images/" +
-            row["prd_codigo"] +
-            ".jpg";
+        _imagePath =
+            "https://www.tiven.com.br/crud/images/${row['prd_codigo']}.jpg";
       } else {
         setState(() {
           _title = '';
           // _barcode = '';
           _sku = '';
           _location = "";
-          _location2 = "";
-          _location3 = "";
           _imagePath = 'http://www.tiven.com.br/crud/images/notregistered.png';
-          print(_barcode);
+          if (kDebugMode) {
+            print(_barcode);
+          }
         });
       }
       await conn.close();
     } catch (e) {
       _sku = '';
-      print("Erro: $e");
+      if (kDebugMode) {
+        print("Erro: $e");
+      }
     }
   }
 
@@ -300,21 +302,18 @@ class _MyHomePageState extends State<MyHomePage> {
       barcode = "";
       _sku = data['data'][0]['prd_codigo'].toString();
       _location = "N/A";
-      _location2 = "N/A";
-      _location3 = "N/A";
-      _imagePath = "https://www.tiven.com.br/crud/images/" +
-          data['data'][0]["prd_codigo"] +
-          ".jpg";
+      _imagePath =
+          "https://www.tiven.com.br/crud/images/${data['data'][0]['prd_codigo']}.jpg";
     } else {
       setState(() {
         _title = '';
         barcode = '';
         _sku = '';
         _location = "";
-        _location2 = "";
-        _location3 = "";
         _imagePath = 'http://www.tiven.com.br/crud/images/notregistered.png';
-        print(barcode);
+        if (kDebugMode) {
+          print(barcode);
+        }
       });
     }
   }
@@ -363,7 +362,9 @@ class _MyHomePageState extends State<MyHomePage> {
         Uri.parse(
             "https://www.tiven.com.br/crud/prc_setScanByMachine.php?MACHINE=${_qrcode.toString()}&VALUE=${_barcode.toString()}"),
         headers: {"Accept": "application/json"});
-    print(_scanQRcode);
+    if (kDebugMode) {
+      print(_scanQRcode);
+    }
     if (response.contentLength! >= 100) {
       setState(() {
         var convertDataToJson = json.decode(response.body);
@@ -391,7 +392,7 @@ class _MyHomePageState extends State<MyHomePage> {
       _sku = data[0]['prd_sku'];
       _location = data[0]['prd_location'] ?? "N/A";
       _imagePath =
-          "https://www.tiven.com.br/crud/images/" + data[0]['prd_sku'] + ".jpg";
+          "https://www.tiven.com.br/crud/images/${data[0]['prd_sku']}.jpg";
     } else {
       setState(() {
         _title = '';
@@ -399,7 +400,9 @@ class _MyHomePageState extends State<MyHomePage> {
         _sku = '';
         _location = "";
         _imagePath = 'http://www.tiven.com.br/crud/images/notregistered.png';
-        print(code);
+        if (kDebugMode) {
+          print(code);
+        }
       });
     }
   }
@@ -443,9 +446,9 @@ class _MyHomePageState extends State<MyHomePage> {
             ElevatedButton(
               onPressed: () async {
                 setState(() async {
-                  DateTime? newDate = await showDatePicker(
+                  await showDatePicker(
                       context: context,
-                      initialDate: SelectedDate,
+                      initialDate: selectedDate,
                       firstDate: DateTime(2024),
                       lastDate: DateTime(2026));
                   // change curDate to view historical daily production
@@ -559,81 +562,79 @@ class _MyHomePageState extends State<MyHomePage> {
                           color: Colors.grey),
                     ]),
               ),
-              Container(
-                child: TextField(
-                  // readOnly: true,
-                  focusNode: myFocusNode,
-                  keyboardType: TextInputType.none,
-                  controller: scanController,
-                  autofocus: true,
-                  onChanged: (code) async {
-                    _scanBarcode = scanController.text;
-                    await barcodeTreatment();
-                    await fetchData();
-                    if (_sku.length <= 1) {
-                      fetchProductBySKU(_barcode);
-                    }
-                    // getProd(_barcode);
-                    if (_sku.length <= 3) {
-                      _flutterBeepPlusPlugin
-                          .playSysSound(AndroidSoundID.TONE_CDMA_PIP);
-                    } else {
-                      setState(() {
-                        _sku = _sku;
-                      });
-                      //await insDailyProd(context, _sku, _title, _barcode);
-                      await _flutterBeepPlusPlugin
-                          .playSysSound(AndroidSoundID.TONE_CDMA_MED_SS);
-                      sleep(Duration(milliseconds: 150));
-                      await _flutterBeepPlusPlugin
-                          .playSysSound(AndroidSoundID.TONE_CDMA_SIGNAL_OFF);
-                    }
-                    fetchProductionData();
-                    Future.delayed(Duration(milliseconds: 200), () {
-                      myFocusNode.requestFocus();
+              TextField(
+                // readOnly: true,
+                focusNode: myFocusNode,
+                keyboardType: TextInputType.none,
+                controller: scanController,
+                autofocus: true,
+                onChanged: (code) async {
+                  _scanBarcode = scanController.text;
+                  await barcodeTreatment();
+                  await fetchData();
+                  if (_sku.length <= 1) {
+                    fetchProductBySKU(_barcode);
+                  }
+                  // getProd(_barcode);
+                  if (_sku.length <= 3) {
+                    _flutterBeepPlusPlugin
+                        .playSysSound(AndroidSoundID.TONE_CDMA_PIP);
+                  } else {
+                    setState(() {
+                      _sku = _sku;
                     });
-                    scanController.text = '';
-                    Future.delayed(Duration(milliseconds: 200), () {
-                      myFocusNode.requestFocus();
-                    });
-                  },
+                    //await insDailyProd(context, _sku, _title, _barcode);
+                    await _flutterBeepPlusPlugin
+                        .playSysSound(AndroidSoundID.TONE_CDMA_MED_SS);
+                    sleep(Duration(milliseconds: 150));
+                    await _flutterBeepPlusPlugin
+                        .playSysSound(AndroidSoundID.TONE_CDMA_SIGNAL_OFF);
+                  }
+                  fetchProductionData();
+                  Future.delayed(Duration(milliseconds: 200), () {
+                    myFocusNode.requestFocus();
+                  });
+                  scanController.text = '';
+                  Future.delayed(Duration(milliseconds: 200), () {
+                    myFocusNode.requestFocus();
+                  });
+                },
 
-                  onTap: () {
-                    SystemChannels.textInput.invokeMethod('TextInput.hide');
-                  },
-                  style: TextStyle(color: Colors.white),
-                  textAlign: TextAlign.center,
-                  decoration: InputDecoration(
-                    fillColor: Colors.white,
-                    focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.grey, width: 2.0)),
-                    labelText: 'Leitor',
-                    labelStyle: TextStyle(color: Colors.grey),
-                    isDense: true,
-                    contentPadding: EdgeInsets.all(10),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(5.0)),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white, width: 2.0),
-                    ),
-                    prefixIcon: IconButton(
-                        onPressed: () {},
-                        icon: Icon(
-                          Icons.barcode_reader,
-                          color: Colors.grey,
-                          size: 24,
-                        )),
-                    suffixIcon: IconButton(
+                onTap: () {
+                  SystemChannels.textInput.invokeMethod('TextInput.hide');
+                },
+                style: TextStyle(color: Colors.white),
+                textAlign: TextAlign.center,
+                decoration: InputDecoration(
+                  fillColor: Colors.white,
+                  focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.grey, width: 2.0)),
+                  labelText: 'Leitor',
+                  labelStyle: TextStyle(color: Colors.grey),
+                  isDense: true,
+                  contentPadding: EdgeInsets.all(10),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(5.0)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white, width: 2.0),
+                  ),
+                  prefixIcon: IconButton(
+                      onPressed: () {},
                       icon: Icon(
-                        Icons.delete_rounded,
+                        Icons.barcode_reader,
                         color: Colors.grey,
                         size: 24,
-                      ),
-                      onPressed: () {
-                        null;
-                      },
+                      )),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      Icons.delete_rounded,
+                      color: Colors.grey,
+                      size: 24,
                     ),
+                    onPressed: () {
+                      null;
+                    },
                   ),
                 ),
               ),
@@ -743,9 +744,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 foregroundColor: Colors.white,
               ),
             ),
-            progressIndicatorBuilder:
-                (context, imageError, downloadProgress) =>
-                    CircularProgressIndicator(value: downloadProgress.progress),
+            progressIndicatorBuilder: (context, imageError, downloadProgress) =>
+                CircularProgressIndicator(value: downloadProgress.progress),
             errorWidget: (context, url, error) => CircleAvatar(
               backgroundColor: Colors.red,
               radius: 82.0,

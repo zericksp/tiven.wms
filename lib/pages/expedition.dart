@@ -1,7 +1,6 @@
 import 'dart:async';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_barcode_scanner_plus/flutter_barcode_scanner_plus.dart';
 import 'package:http/http.dart' as http;
 import 'package:tiven/pages/items.dart';
@@ -9,15 +8,14 @@ import 'package:tiven/pages/items.dart';
 class Expedition extends StatefulWidget {
   final String idUser, nOrder, store, nStore, market, idxOrder;
 
-  Expedition(
-      {Key? key,
+  const Expedition(
+      {super.key,
       required this.idUser,
       required this.nOrder,
       required this.store,
       required this.nStore,
       required this.market,
-      required this.idxOrder})
-      : super(key: key);
+      required this.idxOrder});
 
   @override
   _ExpeditionState createState() => _ExpeditionState(
@@ -62,16 +60,15 @@ class _ExpeditionState extends State<Expedition> {
 class ExpeditionPage extends StatefulWidget {
   final String title, user, nOrder, store, nStore, market, idxOrder;
 
-  ExpeditionPage(
-      {Key? key,
+  const ExpeditionPage(
+      {super.key,
       required this.title,
       required this.user,
       required this.nOrder,
       required this.store,
       required this.nStore,
       required this.market,
-      required this.idxOrder})
-      : super(key: key);
+      required this.idxOrder});
 
   @override
   _ExpeditionPageState createState() => _ExpeditionPageState(
@@ -127,11 +124,14 @@ class _ExpeditionPageState extends State<ExpeditionPage> {
         ),
       ),
       body: RefreshIndicator(
+        onRefresh: _onRefresh,
         child: FutureBuilder<List<NFe>>(
           future: fetchNFe(http.Client(), usr, nOrder, nStore),
           builder: (context, snapshot) {
             if (snapshot.hasError) {
-              print(snapshot.error);
+              if (kDebugMode) {
+                print(snapshot.error);
+              }
               return Center(child: CircularProgressIndicator());
             } else {
               if (snapshot.hasData) {
@@ -149,7 +149,6 @@ class _ExpeditionPageState extends State<ExpeditionPage> {
             }
           },
         ),
-        onRefresh: _onRefresh,
       ),
     );
   }
@@ -168,13 +167,12 @@ class PhotosList extends StatefulWidget {
   final List<NFe> nfe;
   final String user, nOrder, nStore;
 
-  PhotosList(
-      {Key? key,
+  const PhotosList(
+      {super.key,
       required this.nfe,
       required this.user,
       required this.nOrder,
-      required this.nStore})
-      : super(key: key);
+      required this.nStore});
 
   @override
   _PhotosListState createState() =>
@@ -185,18 +183,14 @@ class _PhotosListState extends State<PhotosList> {
   _PhotosListState(
       {required this.usr, required this.nOrder, required this.nStore});
 
-  late String _scanLocation;
-  late String Nfe;
-  late String _store;
   String nOrder;
   String nStore;
-  late DateTime _date;
   String usr;
   late bool saved;
 
   Null get child => null;
   final String _url = "https://www.tiven.com.br/crud/images/";
-  String _sku = "";
+  late String _sku;
   int captured = 0;
   var data;
 
@@ -311,10 +305,7 @@ class _PhotosListState extends State<PhotosList> {
                                       ),
                                     ),
                                     child: Text(
-                                      widget.nfe[index].qty +
-                                          " (" +
-                                          widget.nfe[index].captured +
-                                          ')',
+                                      "${widget.nfe[index].qty}(${widget.nfe[index].captured})",
                                       style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 16,
@@ -447,13 +438,13 @@ class _PhotosListState extends State<PhotosList> {
           Colors.blueAccent[300],
       // : Colors.redAccent.withValues(alpha:0.9)
 
-      content: Text(double.parse(widget.nfe[idx].qty) ==
-              0 //widget.nfe[idx].captured
-          ? widget.nfe[idx].qty +
-              " - " +
-              widget.nfe[idx].title.toString() +
-              ' capturados'
-          : 'Todos ${widget.nfe[idx].title} foram capturados'),
+      content: Text(
+          double.parse(widget.nfe[idx].qty) == 0 //widget.nfe[idx].captured
+              ? widget.nfe[idx].qty +
+                  " - " +
+                  widget.nfe[idx].title.toString() +
+                  ' capturados'
+              : 'Todos ${widget.nfe[idx].title} foram capturados'),
       action: SnackBarAction(
         textColor:
             double.parse(widget.nfe[idx].qty) == 0 //widget.nfe[idx].captured
@@ -573,15 +564,5 @@ class _PhotosListState extends State<PhotosList> {
 
   bool isNumeric(String s) {
     return double.tryParse(s) != null;
-  }
-
-  bool _checkAddress(String value) {
-    if (!isNumeric(value.substring(0, 1)) &&
-        isNumeric(value.substring(1, 3)) &&
-        value.length == 3) {
-      return true;
-    } else {
-      return false;
-    }
   }
 }
