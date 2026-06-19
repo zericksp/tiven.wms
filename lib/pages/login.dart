@@ -33,6 +33,14 @@ class _MyHomePageState extends State<MyHomePage> {
 
   var _isSecured = true;
 
+  //Atualiza o estado do botão de login
+  void _updateLoginButtonState() {
+    setState(() {
+      _enabledSend = _pseudoController.text.isNotEmpty &&
+                     _passwordController.text.isNotEmpty;
+    });
+  }
+
   //**************** Get Login Connection && Data ************************/
   // ignore: missing_return
 
@@ -392,7 +400,8 @@ class _MyHomePageState extends State<MyHomePage> {
         controller: _pseudoController,
         onChanged: (value) {
           setState(() {
-            _enabledPwd = (value.toString().length > 4);
+            _enabledPwd = value.isNotEmpty;
+            _updateLoginButtonState();
           });
         },
       ),
@@ -475,7 +484,11 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
         obscureText: _isSecured,
         controller: _passwordController,
-        onChanged: (value) => _enabledSend = value.toString().length > 4,
+        onChanged: (value) {
+          setState(() {
+            _updateLoginButtonState();
+          });
+        },
       ),
     );
   }
@@ -556,42 +569,28 @@ class _MyHomePageState extends State<MyHomePage> {
   ElevatedButton loginButton() {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
-          foregroundColor: Colors.white.withValues(alpha: 0.5),
+          foregroundColor: _enabledSend
+              ? Colors.white.withValues(alpha: 0.9)
+              : Colors.white.withValues(alpha: 0.3),
           alignment:
               AlignmentGeometry.lerp(Alignment.center, Alignment.center, 5),
-          backgroundColor: Colors.black,
+          backgroundColor: _enabledSend
+              ? Colors.black
+              : Colors.grey.withValues(alpha: 0.4),
           minimumSize: Size(120, 40),
           maximumSize: Size(120, 40),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(6.0),
           ),
-          shadowColor: Colors.grey,
-          elevation: 8),
+          shadowColor: _enabledSend ? Colors.grey : Colors.grey.withValues(alpha: 0.3),
+          elevation: _enabledSend ? 8 : 2),
       child: AutoSizeText(
         'Entrar',
         style: TextStyle(fontSize: 20),
         maxLines: 1,
       ),
-      onPressed: () async {
-        if (_enabledSend == false) {
-          return; // Melhor que 'null'
-        }
-
-        if (_pseudoController.text.isEmpty &&
-            _passwordController.text.isEmpty) {
-          onSignedInEmptyFields("Os campos usuário e senha são necessários");
-          return;
-        }
-
-        if (_pseudoController.text.isEmpty) {
-          onSignedInEmptyFields("O campo usuário é necessário");
-          return;
-        }
-
-        if (_passwordController.text.isEmpty) {
-          onSignedInEmptyFields("O campo senha é necessário");
-          return;
-        }
+      onPressed: _enabledSend
+          ? () async {
         // Fazer login
         var response =
             await login(_pseudoController.text, _passwordController.text);
@@ -630,7 +629,8 @@ class _MyHomePageState extends State<MyHomePage> {
           );
           onSignedInErrorPassword();
         }
-      },
+      }
+          : null,
     );
   }
 
