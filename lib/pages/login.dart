@@ -9,6 +9,7 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:convert/convert.dart';
 import 'package:crypto/crypto.dart' as crypto;
 import 'package:tiven/utils/next_screen_dart';
+import 'package:tiven/config/api_config.dart';
 
 class MyHomePage extends StatefulWidget {
   @override
@@ -37,7 +38,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void _updateLoginButtonState() {
     setState(() {
       _enabledSend = _pseudoController.text.isNotEmpty &&
-                     _passwordController.text.isNotEmpty;
+          _passwordController.text.isNotEmpty;
     });
   }
 
@@ -532,7 +533,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
 /*************************************************/
 
-/// ******************Button Cancel **********************
+  /// ******************Button Cancel **********************
   ElevatedButton cancelButton() {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
@@ -574,69 +575,69 @@ class _MyHomePageState extends State<MyHomePage> {
               : Colors.white.withValues(alpha: 0.3),
           alignment:
               AlignmentGeometry.lerp(Alignment.center, Alignment.center, 5),
-          backgroundColor: _enabledSend
-              ? Colors.black
-              : Colors.grey.withValues(alpha: 0.4),
+          backgroundColor:
+              _enabledSend ? Colors.black : Colors.grey.withValues(alpha: 0.4),
           minimumSize: Size(120, 40),
           maximumSize: Size(120, 40),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(6.0),
           ),
-          shadowColor: _enabledSend ? Colors.grey : Colors.grey.withValues(alpha: 0.3),
+          shadowColor:
+              _enabledSend ? Colors.grey : Colors.grey.withValues(alpha: 0.3),
           elevation: _enabledSend ? 8 : 2),
+      onPressed: _enabledSend
+          ? () async {
+              // Fazer login
+              var response =
+                  await login(_pseudoController.text, _passwordController.text);
+
+              if (response["code"] == 1) {
+                var user = response["user"];
+                String userId = user["user_id"].toString() ?? '';
+                String username = user["username"] ?? '';
+
+                setState(() {
+                  data = response['user'];
+                });
+
+                // AQUI: data agora está disponível para usar
+                await VerifData(
+                    _pseudoController.text, _passwordController.text, data);
+
+                // Mostrar SnackBar de sucesso
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text("Login realizado com sucesso!"),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } else {
+                // Mostrar erro
+                if (kDebugMode) {
+                  print("Erro: ${response["message"]}");
+                }
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text("Erro: ${response["message"]}"),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                onSignedInErrorPassword();
+              }
+            }
+          : null,
       child: AutoSizeText(
         'Entrar',
         style: TextStyle(fontSize: 20),
         maxLines: 1,
       ),
-      onPressed: _enabledSend
-          ? () async {
-        // Fazer login
-        var response =
-            await login(_pseudoController.text, _passwordController.text);
-
-        if (response["code"] == 1) {
-          var user = response["user"];
-          String userId = user["user_id"].toString() ?? '';
-          String username = user["username"] ?? '';
-
-          setState(() {
-            data = response['user'];
-          });
-
-          // AQUI: data agora está disponível para usar
-          await VerifData(
-              _pseudoController.text, _passwordController.text, data);
-
-          // Mostrar SnackBar de sucesso
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("Login realizado com sucesso!"),
-              backgroundColor: Colors.green,
-            ),
-          );
-        } else {
-          // Mostrar erro
-          if (kDebugMode) {
-            print("Erro: ${response["message"]}");
-          }
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("Erro: ${response["message"]}"),
-              backgroundColor: Colors.red,
-            ),
-          );
-          onSignedInErrorPassword();
-        }
-      }
-          : null,
     );
   }
 
   Future<Map<String, dynamic>> login(String pseudo, String password) async {
     final response = await http.post(
-      Uri.parse("https://www.tiven.com.br/crud/Login.php"),
+      Uri.parse(ApiConfig.loginUrl),
       headers: {
         "Content-Type": "application/json",
         "Accept": "application/json",
