@@ -1,11 +1,11 @@
 // Configuração de API - fácil trocar entre localhost e produção
 class ApiConfig {
   // Mude para true para testar em localhost
-  static const bool useLocalhost = false;
+  static const bool useLocalhost = true;
 
   // URLs base
-  static const String localhostUrl = 'http://127.0.0.1/tiven';
-  static const String productionUrl = 'https://www.tiven.com.br/crud';
+  static const String localhostUrl = 'http://172.16.8.3/tiven.com.br';
+  static const String productionUrl = 'https://www.tiven.com.br';
 
   // URL base dinâmica
   static String get baseUrl => useLocalhost ? localhostUrl : productionUrl;
